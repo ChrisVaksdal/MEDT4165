@@ -23,15 +23,8 @@ def generateUnitNoise():
 def generateTimeAxis():
     return np.arange(0, T, 1/fs)
 
-def generateSignalAndNoise(signalAmplitude, noiseAmplitude):
-    time = np.arange(0, T, 1/fs)
-    signal = signalAmplitude * np.sin(2 * np.pi * f0 * time)
-    noise = np.random.normal(0, noiseAmplitude, len(time))
-
-    return time, signal, noise
-
-def addPlot(ax, time, signal, title = None, xLabel = None, yLabel = None, xLim = None, yLim = None):
-    ax.plot(time, signal)
+def addPlot(ax, x, y, title = None, xLabel = None, yLabel = None, xLim = None, yLim = None):
+    ax.plot(x, y)
     if(title):
         ax.set_title(title)
     if xLabel:
@@ -43,7 +36,7 @@ def addPlot(ax, time, signal, title = None, xLabel = None, yLabel = None, xLim =
     if yLim:
         ax.set_ylim(yLim)
 
-def task1():
+def task1(time, unitSignal, unitNoise):
     """
         Task 1 - Signal generation and plotting
         1.  Generate a continuous sinusoidal signal over time and plot it in a figure with labels.
@@ -55,23 +48,13 @@ def task1():
             barely visible.
     """
 
-    def plotSignalAndNoise(subfig, time, signal, signalAmplitude, noise, noiseAmplitude, title):
+    def plotSignalNoiseCombined(subfig, time, signal, signalAmplitude, noise, noiseAmplitude, title):
         subfig.suptitle(title)
 
         axes = subfig.subplots(nrows=3, ncols=1, sharex=True)
-
-        for ax in axes:
-            ax.set_xlabel("Time [us]")
-            ax.set_ylabel("Amplitude [A]")
-
-        axes[0].plot(time, signal)
-        axes[0].set_title(f"Signal (A={signalAmplitude})")
-
-        axes[1].plot(time, noise)
-        axes[1].set_title(f"Noise (A={noiseAmplitude})")
-
-        axes[2].plot(time, signal + noise)
-        axes[2].set_title(f"Combined Signal + Noise")
+        addPlot(axes[0], time, signal, title=f"Signal (A={signalAmplitude})", xLabel="Time [us]", yLabel="Amplitude [A]")
+        addPlot(axes[1], time, noise, title=f"Noise (A={noiseAmplitude})", xLabel="Time [us]", yLabel="Amplitude [A]")
+        addPlot(axes[2], time, signal + noise, title=f"Combined Signal + Noise", xLabel="Time [us]", yLabel="Amplitude [A]")
 
         return axes
     
@@ -79,30 +62,28 @@ def task1():
     fig = plt.figure()
     # fig.set_layout_engine("tight")
     subfigs = fig.subfigures(1, 3)
-    signals = []
-    noises = []
-
-    sAmp, nAmp = 1, 1
-    time, signal, noise = generateSignalAndNoise(sAmp, nAmp)
-    plotSignalAndNoise(subfigs[0], time, signal, sAmp, noise, nAmp, "Equal Signal- and Noise Amplitude\n Signal is somewhat visible")
-    signals.append(signal)
-    noises.append(noise)
+    signals = [unitSignal]
+    noises = [unitNoise]
+    
+    plotSignalNoiseCombined(subfigs[0], time, unitSignal, 1, unitNoise, 1, "Equal Signal- and Noise Amplitude\n Signal is somewhat visible")
     
     sAmp, nAmp = 3, 1
-    _, signal, noise = generateSignalAndNoise(sAmp, nAmp)
-    plotSignalAndNoise(subfigs[1], time, signal, sAmp, noise, nAmp, "Greater Signal Amplitude\nSignal is clearly visible")
+    signal = unitSignal * sAmp
+    noise = unitNoise * nAmp
     signals.append(signal)
     noises.append(noise)
+    plotSignalNoiseCombined(subfigs[1], time, signal, sAmp, noise, nAmp, "Greater Signal Amplitude\nSignal is clearly visible")
 
     sAmp, nAmp = 2.5, 2
-    _, signal, noise = generateSignalAndNoise(sAmp, nAmp)
-    plotSignalAndNoise(subfigs[2], time, signal, sAmp, noise, nAmp, "Greater Noise Amplitude\nSignal is hard to see")
+    signal = unitSignal * sAmp
+    noise = unitNoise * nAmp
     signals.append(signal)
     noises.append(noise)
+    plotSignalNoiseCombined(subfigs[2], time, signal, sAmp, noise, nAmp, "Greater Noise Amplitude\nSignal is hard to see")
 
     # plt.show()
 
-    return time, signals, noises
+    return signals, noises
 
 
 def task2(time, signals, noises):
@@ -125,12 +106,13 @@ def task2(time, signals, noises):
     """
 
     def plotCombinedSNR(ax, time, signal, noise, snrDb, targetSnrDb=None):
-        ax.plot(time, signal + noise)
-        if not targetSnrDb:
-            ax.set_title(f"Signal + Noise (SNR: {snrDb:.2f} dB)")
+        if targetSnrDb is not None:
+            title = f"Signal + Noise (SNR: {snrDb:.2f}dB, Target SNR: {targetSnrDb:.2f}dB)"
         else:
-            ax.set_title(f"Signal + Noise (SNR: {snrDb:.2f} dB, Target SNR: {targetSnrDb} dB)")
-    
+            title = f"Signal + Noise (SNR: {snrDb:.2f} dB)"
+        addPlot(ax, time, signal + noise, title=title, xLabel="Time [us]", yLabel="Amplitude [A]")
+
+    # Calculate and show SNR:    
     _, axes = plt.subplots(nrows=1, ncols=3)
     for signal, noise, ax in zip(signals, noises, axes):
         snr = calculateSnrDb(signal, noise)
@@ -138,17 +120,21 @@ def task2(time, signals, noises):
 
     # plt.show()
     
-    signal = signals[0]
-    noise = noises[0]
-
-    snrNoScaling = calculateSnr(signal, noise)
+    # Scale noise to try and reach target SNR, show results:
     TARGET_SNR_dB = 7
+
+    unitSignal = signals[0]
+    unitNoise = noises[0]
+
+    snrNoScaling = calculateSnr(unitSignal, unitNoise)
+
     scale = np.sqrt(snrNoScaling / 10**(TARGET_SNR_dB/10))  # scale = sqrt(SNR_est / 10^(SNR/10))
-    noise *= scale
-    snrScaledNoise = calculateSnr(signal, noise)
+    scaledNoise = unitNoise * scale
+
+    snrScaledNoise = calculateSnrDb(unitSignal, scaledNoise)
 
     _, axes = plt.subplots(nrows=1, ncols=1)
-    plotCombinedSNR(axes, time, signal, noise, snrScaledNoise, TARGET_SNR_dB)
+    plotCombinedSNR(axes, time, unitSignal, noise, snrScaledNoise, TARGET_SNR_dB)
 
     # plt.show()
 
@@ -214,11 +200,15 @@ def bonusTask():
     pass
 
 def main():
-    time, signals, noises = task1()
+    time = generateTimeAxis()
+    unitSignal = generateUnitSignal()
+    unitNoise = generateUnitNoise()
+
+    signals, noises = task1(time, unitSignal, unitNoise)
     scaledNoise = task2(time, signals, noises)
-    task3(time, signals[0], scaledNoise)
-    task3(time, signals[0], scaledNoise)
-    bonusTask()
+    # task3(time, signals[0], scaledNoise)
+    # task3(time, signals[0], scaledNoise)
+    # bonusTask()
     plt.show()
 
 if __name__ == '__main__':
