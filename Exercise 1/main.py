@@ -160,11 +160,7 @@ def task3(time, signal, noise):
         return spectrum
     
     def plotSpectrum(ax, spectrum, title):
-        ax.plot(np.arange(-fs/2, fs/2, 1/fs), np.abs(spectrum))
-        ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel("Amplitude [A]")
-        ax.set_title(title)
-        ax.set_xlim(-fs/2, fs/2)
+        addPlot(ax, np.arange(-fs/2, fs/2, 1/fs), np.abs(spectrum), title=title, xLabel="Frequency [MHz]", yLabel="Amplitude [A]", xLim=(-fs/2, fs/2))
 
     signalSpectrum = calculatePowerSpectrum(signal)
     noisySpectrum = calculatePowerSpectrum(signal + noise)
