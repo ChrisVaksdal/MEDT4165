@@ -36,7 +36,7 @@ def addPlot(ax, x, y, title = None, xLabel = None, yLabel = None, xLim = None, y
     if yLim:
         ax.set_ylim(yLim)
 
-def task1(time, unitSignal, unitNoise):
+def task1(time, unitSignal, unitNoise, plot=True):
     """
         Task 1 - Signal generation and plotting
         1.  Generate a continuous sinusoidal signal over time and plot it in a figure with labels.
@@ -58,35 +58,33 @@ def task1(time, unitSignal, unitNoise):
 
         return axes
     
-    
-    fig = plt.figure()
-    # fig.set_layout_engine("tight")
-    subfigs = fig.subfigures(1, 3)
     signals = [unitSignal]
     noises = [unitNoise]
-    
-    plotSignalNoiseCombined(subfigs[0], time, unitSignal, 1, unitNoise, 1, "Equal Signal- and Noise Amplitude\n Signal is somewhat visible")
-    
-    sAmp, nAmp = 3, 1
-    signal = unitSignal * sAmp
-    noise = unitNoise * nAmp
-    signals.append(signal)
-    noises.append(noise)
-    plotSignalNoiseCombined(subfigs[1], time, signal, sAmp, noise, nAmp, "Greater Signal Amplitude\nSignal is clearly visible")
 
-    sAmp, nAmp = 2.5, 2
-    signal = unitSignal * sAmp
-    noise = unitNoise * nAmp
-    signals.append(signal)
-    noises.append(noise)
-    plotSignalNoiseCombined(subfigs[2], time, signal, sAmp, noise, nAmp, "Greater Noise Amplitude\nSignal is hard to see")
+    signalAmplitudes = [1, 3, 2.5]
+    noiseAmplitudes = [1, 2, 2]
 
-    # plt.show()
+    for sAmp, nAmp in zip(signalAmplitudes, noiseAmplitudes):
+        signal = unitSignal * sAmp
+        noise = unitNoise * nAmp
+        signals.append(signal)
+        noises.append(noise)
+    
+    if plot:
+        fig = plt.figure()
+        # fig.set_layout_engine("tight")
+        subfigs = fig.subfigures(1, 3)
+        for subfig, sAmp, nAmp in zip(subfigs, signalAmplitudes, noiseAmplitudes):
+            plotSignalNoiseCombined(subfig, time, signal, sAmp, noise, nAmp, f"Signal Amplitude: {sAmp}, Noise Amplitude: {nAmp}")
+        
+        subfigs[0].suptitle("Equal Signal- and Noise Amplitude\n Signal is somewhat visible")
+        subfigs[1].suptitle("Greater Signal Amplitude\nSignal is clearly visible")
+        subfigs[2].suptitle("Greater Noise Amplitude\nSignal is hard to see")
 
     return signals, noises
 
 
-def task2(time, signals, noises):
+def task2(time, signals, noises, plot=True):
     """
         Task 2 - Calculating the signal-to-noise ratio (SNR)
         1. Calculate the signal-to-noise ratio from the defined signal scenarios in (3). Use decibel
@@ -112,13 +110,15 @@ def task2(time, signals, noises):
             title = f"Signal + Noise (SNR: {snrDb:.2f} dB)"
         addPlot(ax, time, signal + noise, title=title, xLabel="Time [us]", yLabel="Amplitude [A]")
 
-    # Calculate and show SNR:    
-    _, axes = plt.subplots(nrows=1, ncols=3)
-    for signal, noise, ax in zip(signals, noises, axes):
-        snr = calculateSnrDb(signal, noise)
-        plotCombinedSNR(ax, time, signal, noise, snr)
+    # Calculate and show SNR:
+    snrs = []
+    for signal, noise in zip(signals, noises):
+        snrs.append(calculateSnrDb(signal, noise))
 
-    # plt.show()
+    if plot:
+        _, axes = plt.subplots(nrows=1, ncols=3)
+        for ax, signal, noise, snr in zip(axes, signals, noises, snrs):
+            plotCombinedSNR(ax, time, signal, noise, snr)
     
     # Scale noise to try and reach target SNR, show results:
     TARGET_SNR_dB = 7
@@ -133,16 +133,15 @@ def task2(time, signals, noises):
 
     snrScaledNoise = calculateSnrDb(unitSignal, scaledNoise)
 
-    _, axes = plt.subplots(nrows=1, ncols=1)
-    plotCombinedSNR(axes, time, unitSignal, noise, snrScaledNoise, TARGET_SNR_dB)
-
-    # plt.show()
+    if plot:
+        _, axes = plt.subplots(nrows=1, ncols=1)
+        plotCombinedSNR(axes, time, unitSignal, noise, snrScaledNoise, TARGET_SNR_dB)
 
     return snrScaledNoise
 
     
 
-def task3(time, signal, noise):
+def task3(time, signal, noise, plot = True):
     """
         Task 3 - Power spectrum (frequency) analysis
         1. Calculate the power spectrum Ps(f) of the continuous sinusoidal signal, and Psn(f) of
@@ -161,15 +160,15 @@ def task3(time, signal, noise):
     
     def plotSpectrum(ax, spectrum, title):
         addPlot(ax, np.arange(-fs/2, fs/2, 1/fs), np.abs(spectrum), title=title, xLabel="Frequency [MHz]", yLabel="Amplitude [A]", xLim=(-fs/2, fs/2))
+    
 
     signalSpectrum = calculatePowerSpectrum(signal)
     noisySpectrum = calculatePowerSpectrum(signal + noise)
 
-    _, axes = plt.subplots(nrows=1, ncols=2)
-    plotSpectrum(axes[0], signalSpectrum, "Signal Power Spectrum")
-    plotSpectrum(axes[1], noisySpectrum, "Signal + Noise Power Spectrum")
-
-    # plt.show()
+    if plot:
+        _, axes = plt.subplots(nrows=1, ncols=2)
+        plotSpectrum(axes[0], signalSpectrum, "Signal Power Spectrum")
+        plotSpectrum(axes[1], noisySpectrum, "Signal + Noise Power Spectrum")
 
 def task4():
     """
@@ -200,9 +199,9 @@ def main():
     unitSignal = generateUnitSignal()
     unitNoise = generateUnitNoise()
 
-    signals, noises = task1(time, unitSignal, unitNoise)
-    scaledNoise = task2(time, signals, noises)
-    # task3(time, signals[0], scaledNoise)
+    signals, noises = task1(time, unitSignal, unitNoise, plot=False)
+    scaledNoise = task2(time, signals, noises, plot=False)
+    task3(time, signals[0], scaledNoise, plot=False)
     # task3(time, signals[0], scaledNoise)
     # bonusTask()
     plt.show()
