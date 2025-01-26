@@ -1,4 +1,6 @@
 numpy
 matplotlib
 scipy
-markdown-pdf
+markdown
+Pygments
+pymupdf

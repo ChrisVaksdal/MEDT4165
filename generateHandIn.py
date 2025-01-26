@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+
 import argparse
 
-from helpers import createSyntaxHighlightedText, getFileContent, runExercise
-from PDFTools import md2Html, savePdf
+from helpers import getFileContent, runExercise, getOutputDir
+
+from PDFTools import PDFGenerator
+from HTMLTools import HTMLGenerator
 
 def main(args=None):
     if args is not None:
@@ -12,11 +16,30 @@ def main(args=None):
     
     for exercise in args.exercises:
         print(f"Generating HTML: 'Exercise {exercise}'")
-        html = md2Html(getFileContent(f"Exercise {exercise}/Exercise{exercise}.md"))
+
+        md = getFileContent(f"Exercise {exercise}/Exercise{exercise}.md")
+
+        html = HTMLGenerator()
+        htmlGenerator = HTMLGenerator()
+        
         if args.include_src:
-            codeHtml, codeCss = createSyntaxHighlightedText(getFileContent(f"Exercise {exercise}/main.py"))
-            html += f"<style>{codeCss}</style>{codeHtml}"
-        savePdf(html, exercise)
+            print(f"Include source code in HTML: 'Exercise {exercise}'")
+            codeMd = f"## Source code\n\n### exercises/Exercise {exercise}/main.py\n```python\n{getFileContent(f'Exercise {exercise}/main.py')}```\n"
+            codeMd += "\n\n>See full source code project on [GitHub: Chris Vaksdal / MEDT4165](https://github.com/ChrisVaksdal/MEDT4165)"
+            md = f"{md}\n\n{codeMd}"
+        
+        html = htmlGenerator.generateHtml(md)
+        
+        if args.export == "html":
+            with open(f"{getOutputDir(exercise)}/Exercise{exercise}.html", "w") as file:
+                file.write(str(html))
+        
+        elif args.export == "pdf":
+            pdf = PDFGenerator(meta={"title": f"MEDT4165 - Exercise {exercise}", "author": "Christoffer-Robin Vaksdal"})
+            imageDir = getOutputDir(exercise)
+            css = getFileContent("style.css")
+            pdf.generatePdf(str(html), imageDir, css)
+            pdf.save(f"{getOutputDir(exercise)}/Exercise{exercise}.pdf")
     
     print("Done.")
     

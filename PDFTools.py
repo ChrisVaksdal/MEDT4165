@@ -1,24 +1,7 @@
 #!/usr/bin/env python
 
 import io
-import os
-
 import fitz
-
-from markdown_pdf import MarkdownPdf, Section
-
-from markdown_it import MarkdownIt
-
-from helpers import getExerciseDir, getOutputDir, getFileContent, createSyntaxHighlightedText
-
-class HTMLGenerator:
-    def __init__(self):
-        self.mdParser = MarkdownIt("commonmark").enable("table")
-    
-    def generateHtml(self, md: str):
-        return self.mdParser.render(md)
-
-htmlGenerator = HTMLGenerator()
 
 class PDFGenerator:
 
@@ -35,15 +18,13 @@ class PDFGenerator:
         "keywords": None,
     }
 
-    def __init__(self):
+    def __init__(self, meta: dict|None = None):
         self.out_file = io.BytesIO()
         self.writer = fitz.DocumentWriter(self.out_file)
         self.page = 0
+        self.meta = meta
     
-    def generatePdf(self, html: str, rootDir: str, css: str, meta: dict|None = None):
-        if meta is not None:
-            self.meta += meta
-        
+    def generatePdf(self, html: str, rootDir: str, css: str):
         story = fitz.Story(html=html, archive=rootDir, user_css=css)
         rect = fitz.paper_rect("A4")
         where = rect + self.borders
@@ -63,49 +44,3 @@ class PDFGenerator:
         doc.set_metadata(self.meta)
         doc.save(outputPath)
         doc.close()
-
-
-def save2Html(md: str, exercise: int):
-    html = htmlGenerator.generateHtml(md)
-    directory = getOutputDir(exercise)
-    prevDir = os.getcwd()
-
-    os.makedirs(directory, exist_ok=True)
-    os.chdir(directory)
-    with open(f"Exercise{exercise}.html", "w") as file:
-        file.write(html)
-
-    os.chdir(prevDir)
-
-def md2Html(md: str):
-    return htmlGenerator.generateHtml(md)
-
-def savePdf(html: str, exercise: int):
-    pdf = PDFGenerator()
-    imageDir = getOutputDir(exercise)
-    css = getFileContent("style.css")
-    pdf.generatePdf(html, imageDir, css)
-    pdf.save(f"{getOutputDir(exercise)}/Exercise{exercise}.pdf")
-
-def generateMarkdown(pdf: MarkdownPdf, exercise: int, includeSource: bool = False):
-    pdf.meta["title"] = f"MEDT4165 - Exercise {exercise}"
-    pdf.meta["author"] = "Christoffer-Robin Vaksdal"
-
-    exerciseDir = getExerciseDir(exercise)
-    imageDir = f"{exerciseDir}/output"
-    outputDir = getOutputDir(exercise)
-
-    md = getFileContent(f"{exerciseDir}/Exercise{exercise}.md")
-    css = getFileContent("style.css")
-    pdf.add_section(Section(md, root=imageDir), user_css=css)
-    
-    if includeSource:
-        code = getFileContent(f"{exerciseDir}/main.py")
-        code, css = createSyntaxHighlightedText(code)
-        # code = f"```python\n{code}\n```"
-        with open("code.html", "w") as html:
-            html.write(code)
-        
-        pdf.add_section(Section(f"# Source code\n\n{code}"), user_css=css)
-
-    pdf.save(f"{outputDir}/Exercise{exercise}.pdf")
