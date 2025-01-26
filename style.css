@@ -1,0 +1,25 @@
+body {
+    
+}
+
+img {
+    align-content: center;
+    margin: 0 auto;
+    width: 50%;
+}
+
+blockquote {
+    color: rgb(80, 80, 80);
+    text-align: center;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* code {
+    font-size: smaller;
+    color: red;
+}
+
+.syntax_highlighted {
+
+} */

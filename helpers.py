@@ -2,6 +2,10 @@
 
 import os
 
+from pygments import highlight
+from pygments.lexers import PythonLexer
+from pygments.formatters import HtmlFormatter
+
 def getExerciseDir(exercise: int):
     directory = f"{os.path.dirname(os.path.abspath(__file__))}/Exercise {exercise}"
     if not os.path.exists(directory):
@@ -26,3 +30,9 @@ def runExercise(exercise: int):
         exec(open(path).read())
         os.chdir("..")
     
+
+def createSyntaxHighlightedText(code: str):
+    lexer = PythonLexer(stripall=True)
+    formatter = HtmlFormatter(linenos=False, cssclass="syntax_highlighted", style="sas", wrapcode=True)
+    return highlight(code, lexer, formatter), formatter.get_style_defs()
+    # + f"<style>{formatter.get_style_defs()}</style"
