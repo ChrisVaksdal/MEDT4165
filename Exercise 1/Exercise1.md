@@ -6,13 +6,13 @@ Written by: Christoffer-Robin Vaksdal
 
 ### Generating a signal
 
-First, we generate a continuous sinusodial signal over time using the following
+Our goal: to generate a continuous sinusodial signal over time using the following
 parameters:
 
-```text
-Signal Frequency, f0 = 1MHz
-Sampling Frequency, fs = 50MHz
-Total Duration, T = 10us
+```python
+f0 = 1MHz   # Signal Frequency
+fs = 50MHz  # Sampling Frequency
+T = 10us    # Total Duration
 ```
 
 To generate the signal, we can use the python module Numpy to store our signal
@@ -29,7 +29,7 @@ The resulting signal looks like this:
 
 ### Generating noise
 
-Next we want to generate random Gaussian noise with the same size and
+Next, we want to generate random Gaussian noise with the same size and
 sample-rate as our signal. Gaussian noise has a probability density function
 (pdf) equal to the normal distribution, so we can use the built-in numpy
 function `numpy.random.normal()` to generate unit-amplitude noise:
@@ -52,8 +52,6 @@ noisySignal = signal * signalAmplitude + noise * noiseAmplitude
 ```
 
 The resulting combined signal looks like this:
-
-The resulting signal looks like this:
 > ![task1_combined](task1_combined.png)
 >> A sinusoidal signal with unit-amplitude combined with random Gaussian noise
 >> of the same unit-amplitude.
@@ -61,7 +59,6 @@ The resulting signal looks like this:
 In the following figure, you can see three different sets of signal- and
 noise-amplitude with individual plots showing the signal, the noise and the
 combined noisy signal:
-
 > ![task1_all_plots](task1_all_plots.png)
 >> Raw signals, raw noise and combined signals with different amplitudes.
 
@@ -71,13 +68,6 @@ out. In the 2nd, the signal amplitude has been increased and as a result, the
 signal is clearly visible in the combined plot. In the 3rd, the amplitude of the
 noise is greater compared to the 2nd scenario, and as a result it is very hard
 to make out the signal.
-
-<div class="centered">
-
-> ![task1](task1.png)
->> CAPTION
-
-</div>
 
 ## Task 2
 
