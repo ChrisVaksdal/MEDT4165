@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import subprocess
 
 from pygments import highlight
 from pygments.lexers import PythonLexer
@@ -23,13 +24,16 @@ def getFileContent(path: str):
         return f.read()
 
 def runExercise(exercise: int):
-    path = f"{getExerciseDir(exercise)}/main.py"
-    with open(path) as f:
-        print(f"Running exercise {exercise}...")
-        os.chdir(f"./Exercise {exercise}")
-        exec(open(path).read())
-        os.chdir("..")
+    if not os.path.exists(f"{getExerciseDir(exercise)}/main.py"):
+        raise Exception(f"Exercise {exercise} does not have a main.py file.")
+
+    try:
+        subprocess.run(["python3", "-m", f"Exercise {exercise}.main"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running exercise {exercise}: {e}")
     
+    print(f"Exercise {exercise} done.")
+
 
 def createSyntaxHighlightedText(code: str):
     lexer = PythonLexer(stripall=True)
