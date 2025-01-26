@@ -2,24 +2,31 @@ body {
     
 }
 
+h2 {
+    margin-top: 2cm;
+}
+
 img {
     align-content: center;
     margin: 0 auto;
-    width: 50%;
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
 }
 
 blockquote {
     color: rgb(80, 80, 80);
-    text-align: center;
+    align-self: center;
     margin: 0 auto;
     width: 100%;
 }
 
-/* code {
-    font-size: smaller;
-    color: red;
+blockquote p {
+    font-size: 10px;
+    text-align: center;
+    margin: 0 5% 0 5%;
 }
 
-.syntax_highlighted {
-
-} */
+code {
+    font-size: 10px;
+}

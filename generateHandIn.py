@@ -32,6 +32,8 @@ def main(args=None):
         
         if args.export == "html":
             with open(f"{getOutputDir(exercise)}/Exercise{exercise}.html", "w") as file:
+                html.head += f"<title>MEDT4165 - Exercise {exercise}</title>"
+                html.head += f"<style>{getFileContent('style.css')}</style>"
                 file.write(str(html))
         
         elif args.export == "pdf":
