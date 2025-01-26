@@ -50,16 +50,6 @@ def addPlot(ax, y, x=None, title = None, xLabel = None, yLabel = None, xLim = No
         plt.savefig(f"{getOutputDir(1)}/{outputFile}")
 
 def task1(time, unitSignal, unitNoise, plot=True):
-    """
-        Task 1 - Signal generation and plotting
-        1.  Generate a continuous sinusoidal signal over time and plot it in a figure with labels.
-        2. Generate random Gaussian noise of the same size and sampled at the same rate as the
-            signal in (1) and plot it in a figure with labels.
-        3. Combine the signal and noise by adding them together and plot the result in a figure.
-            Vary the signal / noise amplitude to find two scenarios, a) one where the signal is clearly
-            visible with only some noise, and b) one where the signal is clearly buried in noise,
-            barely visible.
-    """
 
     def plotSignalNoiseCombined(subfig, time, signal, signalAmplitude, noise, noiseAmplitude, title):
         subfig.suptitle(title, fontsize=36)
@@ -107,23 +97,6 @@ def task1(time, unitSignal, unitNoise, plot=True):
     return signals, noises
 
 def task2(time, signals, noises, plot=True):
-    """
-        Task 2 - Calculating the signal-to-noise ratio (SNR)
-        1. Calculate the signal-to-noise ratio from the defined signal scenarios in (3). Use decibel
-            scale to report it.
-        2. Let's make a target SNR parameter (in dB) to set the signal + noise conditions for further
-            analysis.
-            a) Start with no scaling of the signal or noise amplitude. i.e. unit signal amplitude,
-                and unit noise variance.
-            b) Estimate the SNR using the formula in (1) SNR_est
-            c) Scale the (unit) noise amplitude with a target SNR (user defined parameter in dB)
-                to get the desired SNR for further analysis: scale = sqrt(SNR_est / 10^(SNR/10)).
-                a. The sqrt() is to get from power to amplitude when scaling.
-                b. The 10^(SNR/10) is because we set the target SNR in dB
-            d) Scale the noise signal to get the desired SNR.
-            e) Calculate again the SNR_est from (1) after scaling to check that you reach the
-                target SNR.
-    """
 
     def plotCombinedSNR(ax, time, signal, noise, snrDb, targetSnrDb=None):
         if targetSnrDb is not None:
@@ -138,9 +111,11 @@ def task2(time, signals, noises, plot=True):
         snrs.append(calculateSnrDb(signal, noise))
 
     if plot:
-        _, axes = plt.subplots(nrows=1, ncols=3)
+        fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(60, 20))
         for ax, signal, noise, snr in zip(axes, signals, noises, snrs):
             plotCombinedSNR(ax, time, signal, noise, snr)
+
+        fig.savefig(f"{getOutputDir(1)}/task2_snr.png")            
     
     # Scale noise to try and reach target SNR, show results:
     TARGET_SNR_dB = 7
@@ -156,8 +131,9 @@ def task2(time, signals, noises, plot=True):
     snrScaledNoise = calculateSnrDb(unitSignal, scaledNoise)
 
     if plot:
-        _, axes = plt.subplots(nrows=1, ncols=1)
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(30, 20))
         plotCombinedSNR(axes, time, unitSignal, noise, snrScaledNoise, TARGET_SNR_dB)
+        fig.savefig(f"{getOutputDir(1)}/task2_snr_scaled.png")
 
     return snrScaledNoise    
 
@@ -247,7 +223,7 @@ def main():
     unitNoise = generateUnitNoise()
 
     signals, noises = task1(time, unitSignal, unitNoise, plot=True)
-    # scaledNoise = task2(time, signals, noises, plot=False)
+    scaledNoise = task2(time, signals, noises, plot=True)
     # signalSpectrum, signalFreqs, noisySpectrum, noisyFreqs = task3(time, signals[0], scaledNoise, plot=False)
     # task4(signalSpectrum, signalFreqs, plot=True)
     # bonusTask()

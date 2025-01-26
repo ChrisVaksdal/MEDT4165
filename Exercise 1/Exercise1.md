@@ -69,6 +69,57 @@ signal is clearly visible in the combined plot. In the 3rd, the amplitude of the
 noise is greater compared to the 2nd scenario, and as a result it is very hard
 to make out the signal.
 
-## Task 2
+## Task 2 - Calculating the signal-to-noise ratio (SNR)
 
-TASK2
+### SNR Calculation
+
+Calculating the SNR is simple enough and can be achieved using the following
+two python-functions (one for calculating the ratio, one for converting to dB):
+
+```python
+def calculateSnr(signal, noise):
+    # SNR_est = mean(signal^2) / mean(noise^2)
+    return np.mean(signal**2) / np.mean(noise**2)
+
+def calculateSnrDb(signal, noise):
+    # Decibel: SNR_est_dB = 10*log10(SNR_est) [dB]
+    return 10 * np.log10(calculateSnr(signal, noise))
+```
+
+Using these functions and data from the previous task, we can calculate the
+signal-to-noise ratios for the three different scenarios:
+
+> ![task2_snr](task2_snr.png)
+>> Combined signals with calculated SNRs.
+
+### Creating a target SNR parameter
+
+Now, let's make a function that can scale the noise to achieve a desired target SNR:
+
+```python
+def getTargetScaledNoise(unitSignal, unitNoise, targetSnrDb):
+    snrNoScaling = calculateSnr(unitSignal, unitNoise)
+
+    # Scale ~ sqrt(SNR_est / 10^(SNR/10))
+    scale = np.sqrt(snrNoScaling / 10**(TARGET_SNR_dB/10))
+    return unitNoise * scale
+```
+
+With this function, we can create a new combined signal which should in theory
+have the desired SNR
+
+```python
+TARGET_SNR_dB = 7
+scaledNoise = getTargetScaledNoise(unitSignal, unitNoise, TARGET_SNR_dB)
+snrScaledNoise = calculateSnrDb(unitSignal, scaledNoise)
+```
+
+The resulting SNR is very close to the target (7.00dB vs. 7.00dB).
+The new signal looks like this:
+
+> ![task2_snr](task2_snr_scaled.png)
+>> Combined signals with calculated SNRs.
+
+## Task 3 - Power Spectrum (Frequency) Analysis
+
+ASDASD
