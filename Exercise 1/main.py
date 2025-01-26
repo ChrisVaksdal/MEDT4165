@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 
 from scipy import signal
 
+from helpers import getOutputDir
+
 # Signal parameters:
 f0 = 1      # Signal frequncy in MHz
 fs = 50     # Sampling frequency in MHz
@@ -27,21 +29,25 @@ def generateUnitNoise():
 def generateTimeAxis():
     return np.arange(0, T, 1/fs)
 
-def addPlot(ax, y, x=None, title = None, xLabel = None, yLabel = None, xLim = None, yLim = None):
+def addPlot(ax, y, x=None, title = None, xLabel = None, yLabel = None, xLim = None, yLim = None, outputFile = None):
+    ax.xaxis.set_tick_params(labelsize=32, width=4)
+    ax.yaxis.set_tick_params(labelsize=32, width=4)
     if x is not None:
-        ax.plot(x, y)
+        ax.plot(x, y, linewidth=4)
     else:
-        ax.plot(y)
+        ax.plot(y, linewidth=4)
     if(title):
-        ax.set_title(title)
+        ax.set_title(title, fontsize=48)
     if xLabel:
-        ax.set_xlabel(xLabel)
+        ax.set_xlabel(xLabel, fontsize=32)
     if yLabel:
-        ax.set_ylabel(yLabel)
+        ax.set_ylabel(yLabel, fontsize=32)
     if xLim:
         ax.set_xlim(xLim)
     if yLim:
         ax.set_ylim(yLim)
+    if outputFile:
+        plt.savefig(f"{getOutputDir(1)}/{outputFile}")
 
 def task1(time, unitSignal, unitNoise, plot=True):
     """
@@ -56,11 +62,11 @@ def task1(time, unitSignal, unitNoise, plot=True):
     """
 
     def plotSignalNoiseCombined(subfig, time, signal, signalAmplitude, noise, noiseAmplitude, title):
-        subfig.suptitle(title)
+        subfig.suptitle(title, fontsize=36)
 
         axes = subfig.subplots(nrows=3, ncols=1, sharex=True)
-        addPlot(axes[0], x=time, y=signal, title=f"Signal (A={signalAmplitude})", xLabel="Time [us]", yLabel="Amplitude [A]")
-        addPlot(axes[1], x=time, y=noise, title=f"Noise (A={noiseAmplitude})", xLabel="Time [us]", yLabel="Amplitude [A]")
+        addPlot(axes[0], x=time, y=signal, title=f"Signal (A={signalAmplitude})", yLabel="Amplitude [A]")
+        addPlot(axes[1], x=time, y=noise, title=f"Noise (A={noiseAmplitude})", yLabel="Amplitude [A]")
         addPlot(axes[2], x=time, y=signal + noise, title=f"Combined Signal + Noise", xLabel="Time [us]", yLabel="Amplitude [A]")
 
         return axes
@@ -78,15 +84,25 @@ def task1(time, unitSignal, unitNoise, plot=True):
         noises.append(noise)
     
     if plot:
-        fig = plt.figure()
-        # fig.set_layout_engine("tight")
+        # Plot unit signal/noise:
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+        addPlot(axes, x=time, y=signals[0], title="Unit Signal", xLabel="Time [us]", yLabel="Amplitude [A]", outputFile="task1_signal.png")
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+        addPlot(axes, x=time, y=noises[0], title="Unit Noise", xLabel="Time [us]", yLabel="Amplitude [A]", outputFile="task1_noise.png")
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+        addPlot(axes, x=time, y=signals[0] +noises[0], title="Unit Signal with Unit Noise", xLabel="Time [us]", yLabel="Amplitude [A]", outputFile="task1_combined.png")
+    
+        # Plot signal/noise with different amplitudes
+        fig = plt.figure(figsize=(50, 20))
         subfigs = fig.subfigures(1, 3)
         for subfig, sAmp, nAmp in zip(subfigs, signalAmplitudes, noiseAmplitudes):
             plotSignalNoiseCombined(subfig, time, signal, sAmp, noise, nAmp, f"Signal Amplitude: {sAmp}, Noise Amplitude: {nAmp}")
         
-        subfigs[0].suptitle("Equal Signal- and Noise Amplitude\n Signal is somewhat visible")
-        subfigs[1].suptitle("Greater Signal Amplitude\nSignal is clearly visible")
-        subfigs[2].suptitle("Greater Noise Amplitude\nSignal is hard to see")
+        subfigs[0].suptitle("Equal Signal- and Noise Amplitude\n Signal is somewhat visible", fontsize=36)
+        subfigs[1].suptitle("Greater Signal Amplitude\nSignal is clearly visible", fontsize=36)
+        subfigs[2].suptitle("Greater Noise Amplitude\nSignal is hard to see", fontsize=36)
+        
+        fig.savefig(f"{getOutputDir(1)}/task1_all_plots.png")
 
     return signals, noises
 
@@ -230,12 +246,12 @@ def main():
     unitSignal = generateUnitSignal()
     unitNoise = generateUnitNoise()
 
-    signals, noises = task1(time, unitSignal, unitNoise, plot=False)
-    scaledNoise = task2(time, signals, noises, plot=False)
-    signalSpectrum, signalFreqs, noisySpectrum, noisyFreqs = task3(time, signals[0], scaledNoise, plot=False)
-    task4(signalSpectrum, signalFreqs, plot=True)
+    signals, noises = task1(time, unitSignal, unitNoise, plot=True)
+    # scaledNoise = task2(time, signals, noises, plot=False)
+    # signalSpectrum, signalFreqs, noisySpectrum, noisyFreqs = task3(time, signals[0], scaledNoise, plot=False)
+    # task4(signalSpectrum, signalFreqs, plot=True)
     # bonusTask()
-    plt.show()
+    # plt.show()
 
 if __name__ == '__main__':
     main()
