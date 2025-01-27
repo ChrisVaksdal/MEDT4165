@@ -1,0 +1,32 @@
+body {
+    
+}
+
+h2 {
+    margin-top: 2cm;
+}
+
+img {
+    align-content: center;
+    margin: 0 auto;
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+blockquote {
+    color: rgb(80, 80, 80);
+    align-self: center;
+    margin: 0 auto;
+    width: 100%;
+}
+
+blockquote p {
+    font-size: 10px;
+    text-align: center;
+    margin: 0 5% 0 5%;
+}
+
+code {
+    font-size: 10px;
+}
