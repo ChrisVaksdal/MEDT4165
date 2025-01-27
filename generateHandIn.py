@@ -37,6 +37,7 @@ def main(args=None):
                 file.write(str(html))
         
         elif args.export == "pdf":
+            print(f"Generating PDF: 'Exercise {exercise}'")
             pdf = PDFGenerator(meta={"title": f"MEDT4165 - Exercise {exercise}", "author": "Christoffer-Robin Vaksdal"})
             imageDir = getOutputDir(exercise)
             css = getFileContent("style.css")

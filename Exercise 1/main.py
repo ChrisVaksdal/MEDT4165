@@ -1,71 +1,111 @@
 #!/usr/bin/env python
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from scipy import signal
+from scipy.signal import butter, freqz, filtfilt, windows
 
 from helpers import getOutputDir
 
 # Signal parameters:
-f0 = 1      # Signal frequncy in MHz
-fs = 50     # Sampling frequency in MHz
-T = 10      # Time interval in us
+f0 = 1 * 1e6        # Signal frequncy in KHz
+fs = 50 * 1e6       # Sampling frequency in KHz
+T = 10 * 1e-6       # Time interval in ms
+N = int(T * fs) + 1 # Number of samples
 
 def calculateSnr(signal, noise):
     # SNR_est = mean(signal^2) / mean(noise^2)
     return np.mean(signal**2) / np.mean(noise**2)
 
 def calculateSnrDb(signal, noise):
-    # Decibel: SNR_est_dB = 10*log10(SNR_est) [dB]
+    # Decibel: SNR_est_dB = 10*log10(SNR_est)
     return 10 * np.log10(calculateSnr(signal, noise))
 
 def generateUnitSignal():
     return np.sin(2 * np.pi * f0 * np.arange(0, T, 1/fs))
 
 def generateUnitNoise():
-    return np.random.normal(0, 1, len(np.arange(0, T, 1/fs)))
+    return np.random.normal(0, 1, N)
 
 def generateTimeAxis():
     return np.arange(0, T, 1/fs)
 
-def addPlot(ax, y, x=None, title = None, xLabel = None, yLabel = None, xLim = None, yLim = None, outputFile = None):
+def normalizeSignal(signal):
+    return signal / np.max(np.abs(signal))
+
+def scaleNoiseToTargetSNR(signal, noise, targetSNR):
+    snrNoScaling = calculateSnr(signal, noise)
+    # scale = sqrt(SNR_est / 10^(SNR/10))
+    scale = np.sqrt(snrNoScaling / 10**(targetSNR/10)) 
+    return noise * scale
+
+def addPlot(ax, y, x=None,
+            title = None, xLabel = None, yLabel = None,
+            xLim = None, yLim = None,
+            xticks = None, yticks = None,
+            outputFile = None
+            ):
     ax.xaxis.set_tick_params(labelsize=32, width=4)
     ax.yaxis.set_tick_params(labelsize=32, width=4)
     if x is not None:
         ax.plot(x, y, linewidth=4)
     else:
         ax.plot(y, linewidth=4)
-    if(title):
+    if title is not None:
         ax.set_title(title, fontsize=48)
-    if xLabel:
+    if xLabel is not None:
         ax.set_xlabel(xLabel, fontsize=32)
-    if yLabel:
+    if yLabel is not None:
         ax.set_ylabel(yLabel, fontsize=32)
-    if xLim:
+    if xLim is not None:
         ax.set_xlim(xLim)
-    if yLim:
+    if yLim is not None:
         ax.set_ylim(yLim)
-    if outputFile:
-        plt.savefig(f"{getOutputDir(1)}/{outputFile}")
+    if xticks is not None:
+        ax.set_xticks(xticks)
+    if yticks is not None:
+        ax.set_yticks(yticks)
+    if outputFile is not None:
+        saveFigure(outputFile, fig=ax.figure)
 
-def task1(time, unitSignal, unitNoise, plot=True):
+def saveFigure(fileName: str, fig = None):
+    os.makedirs(f"{getOutputDir(1)}/figures", exist_ok=True)
+    if fig is not None:
+        fig.savefig(f"{getOutputDir(1)}/figures/{fileName}")
+    else:
+        plt.savefig(f"{getOutputDir(1)}/figures/{fileName}")
 
-    def plotSignalNoiseCombined(subfig, time, signal, signalAmplitude, noise, noiseAmplitude, title):
+
+def task1(plot=True):
+
+    def plotSignalNoiseCombined(subfig, time,
+                                signal, signalAmplitude,
+                                noise, noiseAmplitude,
+                                title
+                                ):
         subfig.suptitle(title, fontsize=36)
 
         axes = subfig.subplots(nrows=3, ncols=1, sharex=True)
-        addPlot(axes[0], x=time, y=signal, title=f"Signal (A={signalAmplitude})", yLabel="Amplitude [A]")
-        addPlot(axes[1], x=time, y=noise, title=f"Noise (A={noiseAmplitude})", yLabel="Amplitude [A]")
-        addPlot(axes[2], x=time, y=signal + noise, title=f"Combined Signal + Noise", xLabel="Time [us]", yLabel="Amplitude [A]")
+        addPlot(axes[0], x=time, y=signal,
+                title=f"Signal (A={signalAmplitude})", yLabel="Amplitude [A]")
+        addPlot(axes[1], x=time, y=noise,
+                title=f"Noise (A={noiseAmplitude})", yLabel="Amplitude [A]")
+        addPlot(axes[2], x=time, y=signal + noise,
+                title=f"Combined Signal + Noise", xLabel="Time [us]",
+                yLabel="Amplitude [A]")
 
         return axes
     
+    time = generateTimeAxis()
+    unitSignal = generateUnitSignal()
+    unitNoise = generateUnitNoise()
+
     signals = []
     noises = []
 
     signalAmplitudes = [1, 3, 2.5]
-    noiseAmplitudes = [1, 2, 2]
+    noiseAmplitudes = [1, 1, 2]
 
     for sAmp, nAmp in zip(signalAmplitudes, noiseAmplitudes):
         signal = unitSignal * sAmp
@@ -76,46 +116,55 @@ def task1(time, unitSignal, unitNoise, plot=True):
     if plot:
         # Plot unit signal/noise:
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
-        addPlot(axes, x=time, y=signals[0], title="Unit Signal", xLabel="Time [us]", yLabel="Amplitude [A]", outputFile="task1_signal.png")
+        addPlot(axes, x=time*1e6, y=signals[0],
+                title="Unit Signal", xLabel="Time [us]", yLabel="Amplitude [A]",
+                outputFile="task1_signal.png")
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
-        addPlot(axes, x=time, y=noises[0], title="Unit Noise", xLabel="Time [us]", yLabel="Amplitude [A]", outputFile="task1_noise.png")
+        addPlot(axes, x=time*1e6, y=noises[0],
+                title="Unit Noise", xLabel="Time [us]", yLabel="Amplitude [A]",
+                outputFile="task1_noise.png")
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
-        addPlot(axes, x=time, y=signals[0] +noises[0], title="Unit Signal with Unit Noise", xLabel="Time [us]", yLabel="Amplitude [A]", outputFile="task1_combined.png")
+        addPlot(axes, x=time*1e6, y=signals[0] +noises[0],
+                title="Unit Signal with Unit Noise",
+                xLabel="Time [us]", yLabel="Amplitude [A]",
+                outputFile="task1_combined.png")
     
         # Plot signal/noise with different amplitudes
-        fig = plt.figure(figsize=(50, 20))
+        fig = plt.figure(figsize=(50, 40))
         subfigs = fig.subfigures(1, 3)
-        for subfig, sAmp, nAmp in zip(subfigs, signalAmplitudes, noiseAmplitudes):
-            plotSignalNoiseCombined(subfig, time, signal, sAmp, noise, nAmp, f"Signal Amplitude: {sAmp}, Noise Amplitude: {nAmp}")
+        for subfig, signal, sAmp, noise, nAmp in zip(subfigs,
+                                                     signals, signalAmplitudes,
+                                                     noises, noiseAmplitudes
+        ):
+            plotSignalNoiseCombined(subfig, time*1e6, signal,
+                                    sAmp, noise, nAmp,
+                                    f"Signal Amplitude: {sAmp}, Noise Amplitude: {nAmp}")
         
-        subfigs[0].suptitle("Equal Signal- and Noise Amplitude\n Signal is somewhat visible", fontsize=36)
-        subfigs[1].suptitle("Greater Signal Amplitude\nSignal is clearly visible", fontsize=36)
-        subfigs[2].suptitle("Greater Noise Amplitude\nSignal is hard to see", fontsize=36)
+        subfigs[0].suptitle("Equal Signal- and Noise Amplitude\n Signal is somewhat visible",
+                            fontsize=36)
+        subfigs[1].suptitle("Greater Signal Amplitude\nSignal is clearly visible",
+                            fontsize=36)
+        subfigs[2].suptitle("Greater Noise Amplitude\nSignal is very hard to see",
+                            fontsize=36)
         
-        fig.savefig(f"{getOutputDir(1)}/task1_all_plots.png")
+        saveFigure("task1_all_plots.png", fig)
 
     return signals, noises
 
 def task2(time, signals, noises, plot=True):
-
-    def plotCombinedSNR(ax, time, signal, noise, snrDb, targetSnrDb=None):
-        if targetSnrDb is not None:
-            title = f"Signal + Noise (SNR: {snrDb:.2f}dB, Target SNR: {targetSnrDb:.2f}dB)"
-        else:
-            title = f"Signal + Noise (SNR: {snrDb:.2f} dB)"
-        addPlot(ax, x=time, y=signal + noise, title=title, xLabel="Time [us]", yLabel="Amplitude [A]")
-
     # Calculate and show SNR:
-    snrs = []
+    snrsdB = []
     for signal, noise in zip(signals, noises):
-        snrs.append(calculateSnrDb(signal, noise))
+        snrsdB.append(calculateSnrDb(signal, noise))
 
     if plot:
         fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(60, 20))
-        for ax, signal, noise, snr in zip(axes, signals, noises, snrs):
-            plotCombinedSNR(ax, time, signal, noise, snr)
-
-        fig.savefig(f"{getOutputDir(1)}/task2_snr.png")            
+        for ax, signal, noise, snr in zip(axes, signals, noises, snrsdB):
+            addPlot(ax, x=time*1e6, y=signal + noise,
+                    title=f"Signal + Noise (SNR: {snr:.2f} dB)",
+                    xLabel="Time [us]", yLabel="Amplitude [A]"
+            )
+        saveFigure("task2_snr.png", fig)
     
     # Scale noise to try and reach target SNR, show results:
     TARGET_SNR_dB = 7
@@ -128,105 +177,137 @@ def task2(time, signals, noises, plot=True):
     scale = np.sqrt(snrNoScaling / 10**(TARGET_SNR_dB/10))  # scale = sqrt(SNR_est / 10^(SNR/10))
     scaledNoise = unitNoise * scale
 
-    snrScaledNoise = calculateSnrDb(unitSignal, scaledNoise)
+    snrScaledNoisedB = calculateSnrDb(unitSignal, scaledNoise)
 
     if plot:
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(30, 20))
-        plotCombinedSNR(axes, time, unitSignal, noise, snrScaledNoise, TARGET_SNR_dB)
-        fig.savefig(f"{getOutputDir(1)}/task2_snr_scaled.png")
+        title = f"Signal + Noise (SNR: {snrScaledNoisedB:.2f}dB, Target SNR: {TARGET_SNR_dB:.2f}dB)"
+        addPlot(axes, x=time*1e6, y=normalizeSignal(signal + scaledNoise),
+                title=title,
+                xLabel="Time [us]", yLabel="Amplitude [A]"
+        )
+        saveFigure("task2_snr_scaled_normalized.png", fig)
 
-    return snrScaledNoise    
+    return unitSignal, scaledNoise
 
 def task3(time, signal, noise, plot=True):
-    """
-        Task 3 - Power spectrum (frequency) analysis
-        1. Calculate the power spectrum Ps(f) of the continuous sinusoidal signal, and Psn(f) of
-            the signal + noise.
-        2. Plot the frequency spectrum of the signal and the signal + noise in diberent (sub)plots.
-    """
+
     def calculatePowerSpectrum(signal):
-        # P(f) = 1/N*abs(fft(signal, N)^2
-        # Where N is the number of frequency components, here distributed
-        # between [-Fs/2, Fs/2].
+        # P(f) = 1/N * abs(fft(signal, N)^2
         N = len(signal)
-        spectrum = np.fft.fft(signal)
-        spectrum = np.fft.fftshift(spectrum)
+        spectrum = np.fft.fft(signal, N)
         powerSpectrum = (1/N) * np.abs(spectrum)**2
+        powerSpectrum = np.fft.fftshift(powerSpectrum)
+        powerSpectrum = 20 * np.log10(powerSpectrum)
         freqs = np.fft.fftfreq(N, d=1/fs)
+        freqs = np.fft.fftshift(freqs)
         return powerSpectrum, freqs
     
     def plotSpectrum(ax, spectrum, freqs, title):
-        idx = np.argsort(freqs)
-        addPlot(ax, x=freqs, y=10 * np.log10(spectrum), title=title, xLabel="Frequency [MHz]", yLabel="Amplitude [A]", xLim=(-fs/2, fs/2))
-    
+        addPlot(ax, x=freqs*1e-6, y=spectrum, title=title,
+                xLabel="Frequency [MHz]", yLabel="Amplitude [dB]",
+                xLim=(-(fs*1e-6)/2, (fs*1e-6)/2)
+        )
 
     signalSpectrum, signalFreqs = calculatePowerSpectrum(signal)
-    noisySpectrum, noisyFreqs = calculatePowerSpectrum(signal + noise)
+    noisySpectrum, noisyFreqs = calculatePowerSpectrum(normalizeSignal(signal + noise))
 
     if plot:
-        _, axes = plt.subplots(nrows=1, ncols=2)
-        plotSpectrum(axes[0], signalSpectrum, signalFreqs, "Signal Power Spectrum")
-        plotSpectrum(axes[1], noisySpectrum, noisyFreqs, "Signal + Noise Power Spectrum")
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30, 20))
+        plotSpectrum(axes[0], signalSpectrum, signalFreqs,
+                     "Signal Power Spectrum")
+        plotSpectrum(axes[1], noisySpectrum, noisyFreqs,
+                     "Signal + Noise Power Spectrum")
+        saveFigure("task3_spectra.png", fig)
     
-    return signalSpectrum, signalFreqs, noisySpectrum, noisyFreqs
+    return noisySpectrum, noisyFreqs
 
-def task4(signalSpectrum, signalFreqs, plot=True):
-    """
-        Task 4 - Filtering to improve the signal-to-noise ratio
-        1. Design a band pass filter (IIR or FIR type) to keep the signal of interest but
-            also attenuate other noise components.
-        2. 2. Plot the frequency response of the filter,
-            …Maybe even on top of the spectrum of the signal or signal+noise.
-        3. Calculate the SNR and compare to the ideal value calculated previously.
-        4. Do the procedure for the high and low SNR scenarios. Are you able to reconstruct the
-            signal? Try to do as good as possible by tuning the parameters of the filter (low
-            and high filter frequencies, and filter order).
-    """
-    # Create a band pass filter
-    fLow = f0 - (f0*0.1)
-    fHigh = f0 + (f0*0.1)
-    filterOrder = 3
+def task4(noisySpectrum, noisyFreqs, plot=True):
+    def getFilterCoeffs(fLow, fHigh, filterOrder, gain):
+        b, a = butter(filterOrder, [fLow, fHigh],
+                         btype="bandpass", output="ba", fs=fs
+        )
+        b *= gain
+        return b, a
 
-    b, a = signal.butter(filterOrder, [fLow, fHigh], btype="bandpass", output="ba", fs=fs)
+    # Designing a bandpass filter and showing response:
+
+    fLow = f0 * 0.9
+    fHigh = f0 * 1.1
+    filterOrder = 5
+    gain = 30
+
+    b, a = getFilterCoeffs(fLow, fHigh, filterOrder, gain)
+    
+    w, h = freqz(b, a, fs=fs, worN=np.linspace(-fs/2, fs/2, 1000))
 
     if plot:
-        _, axes = plt.subplots(nrows=1, ncols=2)
-        w, h = signal.freqs(b, a)
-        responseDb = 10*np.log10(np.abs(h))
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(30, 20))
 
-        #Find overlapping part of the frequency response and the signal spectrum
-        overlap = np.intersect1d(signalFreqs, w)
-        indices = np.where(np.logical_and(signalFreqs > min(responseDb), signalFreqs < max(responseDb)), signalFreqs, responseDb)
+        addPlot(axes, x=w*1e-6, y=np.abs(h), title="Filter Response",
+                xLabel="Frequency [MHz]", yLabel="Response [dB]",
+                xLim=(-(fs*1e-6)/2, (fs*1e-6)/2),
+                # xticks=np.arange(-1, 10, 1),
+                yLim=(-30, 40),
+        )
+        addPlot(axes, x=noisyFreqs*1e-6, y=noisySpectrum)
+        axes.legend(["Filter Response", "Signal Power Spectrum"],
+                    prop={"size": 36})
+        saveFigure("task4_filter_response.png", fig)
 
-        addPlot(axes[0], x=signalFreqs, y=signalSpectrum[indices], title="Signal Spectrum", xLabel="Frequency [MHz]", yLabel="Amplitude [A]")
-        
-        # addPlot(axes[0], x=w, y=overlap, title="Frequency Response", xLabel="Frequency [MHz]", yLabel="Amplitude [dB]")
-        # addPlot(axes[1], x=signalFreqs, y=responseDb)[np.indices(responseDb == 0)], title="Frequency Response", xLabel="Frequency [MHz]", yLabel="Amplitude [dB]")
-        # addPlot(axes[1], x=signalFreqs, y=signalSpectrum)
+    # Applying the filter:
 
+    time = generateTimeAxis()        
+    signal = generateUnitSignal()
+    noise = scaleNoiseToTargetSNR(signal, generateUnitNoise(), -10)
 
+    snrdBNoFilter = calculateSnrDb(signal, noise)
 
+    combined = normalizeSignal(signal + noise)
 
-def bonusTask():
-    """
-        Bonus
-        Set the SNR to very low so that the signal is barely visible or not at all. Try to find
-        a way to improve results of the reconstructed signal. Calculate the SNR and compare to
-        the values calculated previously as a metric in addition to the visual comparison. Use
-        any source to help you and have fun.
-    """
-    pass
+    b, a = getFilterCoeffs(f0 * 0.8, f0 * 1.2, 6, 1)
+    filtered = filtfilt(b, a, combined)
+
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(30, 20))
+
+    addPlot(axes, x=time*1e6, y=combined, title=f"Unfiltered vs. filtered signal",
+            xLabel="Time [us]", yLabel="Amplitude [A]"
+    )
+    addPlot(axes, x=time*1e6, y=filtered)
+    axes.legend([f"Signal + Noise (SNR: {snrdBNoFilter:.2f}dB)",
+        f"Filtered Signal + Noise (SNR: {calculateSnrDb(signal, filtered):.2f}dB)"
+        ], prop={"size": 36}
+    )
+    saveFigure("task4_filtered_signal.png", fig)
+
+    # Apply a Hamming window before filtering:
+
+    window = windows.hamming(N)
+    windowedSignal = combined * window
+    filteredWindowed = filtfilt(b, a, windowedSignal)
+
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(30, 20))
+
+    addPlot(axes, x=time*1e6, y=combined, title=f"Unfiltered vs. filtered+windowed signal",
+            xLabel="Time [us]", yLabel="Amplitude [A]"
+    )
+    addPlot(axes, x=time*1e6, y=filteredWindowed)
+    axes.legend([f"Noisy signal (SNR: {snrdBNoFilter:.2f}dB)",
+        f"Windowed, filtered signal (SNR: {calculateSnrDb(signal, filteredWindowed):.2f}dB)"
+        ], prop={"size": 36}
+    )
+    saveFigure("task4_filtered_windowed_signal.png", fig)
 
 def main():
     time = generateTimeAxis()
-    unitSignal = generateUnitSignal()
-    unitNoise = generateUnitNoise()
 
-    signals, noises = task1(time, unitSignal, unitNoise, plot=True)
-    scaledNoise = task2(time, signals, noises, plot=True)
-    # signalSpectrum, signalFreqs, noisySpectrum, noisyFreqs = task3(time, signals[0], scaledNoise, plot=False)
-    # task4(signalSpectrum, signalFreqs, plot=True)
-    # bonusTask()
+    signals, noises = task1(plot=True)
+
+    signal, scaledNoise = task2(time, signals, noises, plot=True)
+
+    noisySpectrum, noisyFreqs = task3(time, signal, scaledNoise, plot=True)
+
+    task4(noisySpectrum, noisyFreqs, plot=True)
     # plt.show()
 
 if __name__ == '__main__':
