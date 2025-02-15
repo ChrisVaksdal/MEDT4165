@@ -23,10 +23,12 @@ def zeroPad(signal, N):
     return np.pad(signal, (padWidth, padWidth + 1))
 
 
+fs = 250 * 1e6
+f0 = 2.5 * 1e6
+T = 10 * 1e-6
+
+
 def task1_transmission():
-    fs = 250 * 1e6
-    f0 = 2.5 * 1e6
-    T = 10 * 1e-6
     bw = 0.3
     bw_abs = bw * f0
 
@@ -94,20 +96,30 @@ def task1_transmission():
     axes[1].set_title(f"Power Spectra (f0={f0*1e-6} MHz, T={1/f0*1e6:.2f} us)")
     axes[1].legend(["Gauss Pulse", "Square Pulse"])
 
-    return timeVec, gausspulse, squarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
+    return timeVec, gausspulse, paddedSquarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
 
 
-def task1_transducer(timeVec, signals: list, freqs, spectra: list):
-    fs = 250 * 1e6
-    f0 = 2.5 * 1e6
+def task1_transducer(timeVec, signals: list, freqs, spectra: list, names: list):
     bw = 0.4
-    T = 10 * 1e-6
-    timeVec = np.linspace(-T / 2, T / 2, int(T * fs))
+
     impulseResponse = signal.gausspulse(timeVec, fc=f0, bw=bw)
-    freqResponse = signal.hilbert(impulseResponse)
+    freqResponse, transducerFreqs = powerSpectrum(impulseResponse, fs)
 
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(60, 40))
+
     axes[0].plot(timeVec * 1e6, impulseResponse)
+    for sig in signals:
+        axes[0].plot(timeVec * 1e6, sig)
+    axes[0].set_title(f"Signals")
+    axes[0].legend(["transducer"] + names)
+    axes[0].set_xlim(-T * 1e6 / 4, T * 1e6 / 4)
+
+    axes[1].plot(transducerFreqs * 1e-6, freqResponse)
+    for spectrum in spectra:
+        axes[1].plot(freqs * 1e-6, spectrum)
+    axes[1].set_title(f"Frequency Responses")
+    axes[1].legend(["transducer"] + names)
+    axes[1].set_xlim(-(f0 * 5 * 1e-6), (f0 * 5 * 1e-6))
 
     return timeVec, impulseResponse, freqResponse
 
@@ -115,7 +127,8 @@ def task1_transducer(timeVec, signals: list, freqs, spectra: list):
 def task1():
     time, gPulse, sPulse, fftFreqs, gSpectrum, sSpectrum = task1_transmission()
     transducerTime, transducerImpulse, transducerFrequency = task1_transducer(
-        time, [gPulse, sPulse], fftFreqs, [gSpectrum, sSpectrum])
+        time, [gPulse, sPulse], fftFreqs, [gSpectrum, sSpectrum],
+        ["Gauss Pulse", "Square Pulse"])
 
     plt.show()
 
