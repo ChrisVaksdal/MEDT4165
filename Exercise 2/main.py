@@ -129,8 +129,8 @@ def task1_transmission(timeVec, f0, plot=False):
     return gausspulse, paddedSquarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
 
 
-def task1_transducer(fc,
-                     timeVec,
+def task1_transducer(timeVec,
+                     fc,
                      signals: list,
                      freqs,
                      spectra: list,
@@ -207,45 +207,45 @@ def task1_combined(timeVec,
         convolvedSpectrum = transducerFrequencyResponse * spectrum
         combinedSpectra.append(convolvedSpectrum / np.max(convolvedSpectrum))
 
+    # TODO: Add part with changing f0 to 4.0MHz
+
     if plot:
         convolvedSignalFig = Figure(len(signals), 2, "Convolved Signals",
                                     "task1_convolved.png", (60, 60))
         for i, rSig, cSig, name in zip(range(len(signals)), signals,
                                        combinedSignals, names):
-            convolvedSignalFig.addPlot(i,
-                                       0,
-                                       timeVec * 1e6,
-                                       rSig,
-                                       title=f"Convolving {name} with transducer",
-                                       xLabel="Time [us]",
-                                       yLabel="Amplitude [A]",
-                                       xLim=[-T * 1e6 / 4, T * 1e6 / 4],
-                                       xticks=np.linspace(timeVec[0] * 1e6, timeVec[-1] * 1e6, 11),
-                                       grid=True)
-            convolvedSignalFig.addPlot(i,
-                                       0,
-                                       timeVec * 1e6,
-                                       cSig)
-            convolvedSignalFig.addLegend(i, 0, [f"Raw {name}", f"{name} convolved with transducer"])
+            convolvedSignalFig.addPlot(
+                i,
+                0,
+                timeVec * 1e6,
+                rSig,
+                title=f"Convolving {name} with transducer",
+                xLabel="Time [us]",
+                yLabel="Amplitude [A]",
+                xLim=[-T * 1e6 / 4, T * 1e6 / 4],
+                xticks=np.linspace(timeVec[0] * 1e6, timeVec[-1] * 1e6, 11),
+                grid=True)
+            convolvedSignalFig.addPlot(i, 0, timeVec * 1e6, cSig)
+            convolvedSignalFig.addLegend(
+                i, 0, [f"Raw {name}", f"{name} convolved with transducer"])
         minFreq, maxFreq = -f0 * 6 * 1e-6, f0 * 6 * 1e-6
         for i, rSpectrum, cSpectrum, name in zip(range(len(combinedSpectra)),
                                                  spectra, combinedSignals,
                                                  names):
-            convolvedSignalFig.addPlot(i,
-                                       1,
-                                       freqs * 1e-6,
-                                       rSpectrum / np.max(rSpectrum),
-                                       title=f"Spectrum of {name} convolved with transducer",
-                                       xLabel="Frequency [MHz]",
-                                       yLabel="Power [dB]",
-                                       xLim=[minFreq, maxFreq],
-                                       xticks=np.arange(minFreq, maxFreq, 2),
-                                       grid=True)
-            convolvedSignalFig.addPlot(i,
-                                       1,
-                                       freqs * 1e-6,
-                                       cSpectrum)
-            convolvedSignalFig.addLegend(i, 1, [f"Raw {name}", f"{name} convolved with transducer"])
+            convolvedSignalFig.addPlot(
+                i,
+                1,
+                freqs * 1e-6,
+                rSpectrum / np.max(rSpectrum),
+                title=f"Spectrum of {name} convolved with transducer",
+                xLabel="Frequency [MHz]",
+                yLabel="Power [dB]",
+                xLim=[minFreq, maxFreq],
+                xticks=np.arange(minFreq, maxFreq, 2),
+                grid=True)
+            convolvedSignalFig.addPlot(i, 1, freqs * 1e-6, cSpectrum)
+            convolvedSignalFig.addLegend(
+                i, 1, [f"Raw {name}", f"{name} convolved with transducer"])
 
         convolvedSignalFig.savePlot()
 
@@ -267,8 +267,8 @@ def task1():
         timeVec, f0, plot=True)
 
     transducerImpulse, transducerFrequency = task1_transducer(
-        f0,
-        timeVec, [gPulse, sPulse],
+        timeVec,
+        f0, [gPulse, sPulse],
         fftFreqs, [gSpectrum, sSpectrum], ["Gauss Pulse", "Square Pulse"],
         plot=True)
 
