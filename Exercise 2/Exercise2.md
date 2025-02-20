@@ -98,3 +98,18 @@ pulseLengthMillimeters = pulseLength * speedOfSoundMetersPerSecond * 1e3
 
 Performing this calculation we get an output of a pulse duration of 511 samples,
 which comes out to a spatial pulse length of 3.15mm.
+
+### Transducer Response
+
+To make the transducer response as a gaussian-weighted sinusodial we can reuse
+what we learned in the previous section:
+
+```python
+impulseResponse = signal.gausspulse(timeVec, fc=2.5*1e6, bw=0.4)
+freqResponse, transducerFreqs = powerSpectrum(impulseResponse, fs)
+```
+
+Here's what the impulse- and frequency responses look like:
+
+>> ![task1_transducer](figures/task1_transducer.png)
+>> Transducer responses along with signals and spectra.

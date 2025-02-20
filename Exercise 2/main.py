@@ -142,21 +142,45 @@ def task1_transducer(fc,
     freqResponse, transducerFreqs = powerSpectrum(impulseResponse, fs)
 
     if plot:
-        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(60, 40))
+        transducerFig = Figure(2, 1, "Transducer Response",
+                               "task1_transducer.png")
 
-        axes[0].plot(timeVec * 1e6, impulseResponse)
+        transducerFig.addPlot(0,
+                              0,
+                              timeVec * 1e6,
+                              impulseResponse,
+                              title=f"Impulse Response",
+                              xLabel="Time [us]",
+                              yLabel="Amplitude [A]",
+                              xLim=[-T * 1e6 / 4, T * 1e6 / 4],
+                              grid=True)
         for sig in signals:
-            axes[0].plot(timeVec * 1e6, sig)
-        axes[0].set_title(f"Signals")
-        axes[0].legend(["transducer"] + names)
-        axes[0].set_xlim(-T * 1e6 / 4, T * 1e6 / 4)
+            transducerFig.addPlot(
+                0,
+                0,
+                timeVec * 1e6,
+                sig,
+            )
+        transducerFig.addLegend(0, 0, ["Transducer"] + names)
 
-        axes[1].plot(transducerFreqs * 1e-6, freqResponse)
+        transducerFig.addPlot(1,
+                              0,
+                              transducerFreqs * 1e-6,
+                              freqResponse,
+                              title=f"Frequency Response",
+                              xLabel="Frequency [MHz]",
+                              yLabel="Power [dB]",
+                              xLim=[-(fc * 6 * 1e-6), (fc * 6 * 1e-6)],
+                              grid=True)
         for spectrum in spectra:
-            axes[1].plot(freqs * 1e-6, spectrum)
-        axes[1].set_title(f"Frequency Responses")
-        axes[1].legend(["transducer"] + names)
-        axes[1].set_xlim(-(fc * 6 * 1e-6), (fc * 6 * 1e-6))
+            transducerFig.addPlot(
+                1,
+                0,
+                freqs * 1e-6,
+                spectrum,
+            )
+        transducerFig.addLegend(1, 0, ["Transducer"] + names)
+        transducerFig.savePlot()
 
     return impulseResponse, freqResponse
 
@@ -226,11 +250,11 @@ def task1():
     gPulse, sPulse, fftFreqs, gSpectrum, sSpectrum = task1_transmission(
         timeVec, f0, plot=True)
 
-    # transducerImpulse, transducerFrequency = task1_transducer(
-    #     f0,
-    #     timeVec, [gPulse, sPulse],
-    #     fftFreqs, [gSpectrum, sSpectrum], ["Gauss Pulse", "Square Pulse"],
-    #     plot=False)
+    transducerImpulse, transducerFrequency = task1_transducer(
+        f0,
+        timeVec, [gPulse, sPulse],
+        fftFreqs, [gSpectrum, sSpectrum], ["Gauss Pulse", "Square Pulse"],
+        plot=True)
 
     # convolvedSignals, convolvedSpectra = task1_combined(
     #     timeVec,
