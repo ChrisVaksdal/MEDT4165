@@ -36,3 +36,36 @@ respectively. Here's a plot of all three:
 >> ![task1_gauss_pulse](figures/task1_gauss_pulse.png)
 >> Plot of gaussian pulse. Along with the signal you can see the imaginary
 >> parts and the envelope of the signal.
+
+Now we can quickly calculate the length of the gauss-pulse and generate a
+square-wave pulse with roughly the same length.
+
+```python
+period = 1 / f0
+nPeriods = int(1 / bw)
+pulseTime = period * nPeriods
+pulseTimeVec = np.arange(0, pulseTime, 1 / fs)
+squarePulse = signal.square(2 * np.pi * f0 * pulseTimeVec)
+```
+
+This pulse will be shorter than the full signal vector of the gauss pulse, so
+we can define a function to pad the signal with zeros:
+
+```python
+def zeroPad(signal, N):
+    padWidth = int((N - len(signal)) / 2)
+    if len(signal) % 2 == 0:
+        return np.pad(signal, padWidth)
+    return np.pad(signal, (padWidth, padWidth + 1))
+
+paddedSquarePulse = zeroPad(squarePulse, len(gaussPulse))
+```
+
+Using the power spectrum functionality from Exercise 1 we can plot the signals
+and their power spectra:
+
+>> ![task1_gauss](figures/task1_gauss.png)
+>> Gaussian pulse with associated power spectrum.
+----------
+>> ![task1_square](figures/task1_square.png)
+>> Gaussian pulse with associated power spectrum.

@@ -2,12 +2,7 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from os import makedirs
-from typing import Tuple
-
-from helpers import getOutputDir
-
-# def plot(axes, x, y, title:str|None=None, xLabel:str|None=None, yLabel:str|None=None, xLim:Tuple|None=None, yLim:Tuple|None=None, xticks:list[int]|None=None, yticks:list[int]|None=None):
+from .Figure import Figure
 
 
 def powerSpectrum(signal, fs):
@@ -25,88 +20,6 @@ def zeroPad(signal, N):
     if len(signal) % 2 == 0:
         return np.pad(signal, padWidth)
     return np.pad(signal, (padWidth, padWidth + 1))
-
-
-class Figure:
-
-    def __init__(self,
-                 rows: int,
-                 cols: int,
-                 title: str,
-                 filename: str,
-                 figsize=(30, 20)):
-        self.rows = rows
-        self.cols = cols
-        self.title = title
-        self.filename = filename
-        self.fig, self.axes = plt.subplots(nrows=self.rows,
-                                           ncols=self.cols,
-                                           figsize=figsize)
-
-    def _getAxis(self, row: int, col: int):
-        if self.rows == 1 and self.cols == 1:
-            return self.axes
-        elif self.rows == 1 and self.cols > 1:
-            return self.axes[col]
-        elif self.cols == 1 and self.rows > 1:
-            return self.axes[row]
-        else:
-            return self.axes[row, col]
-    
-    def addPlot(self,
-                row: int,
-                col: int,
-                x,
-                y,
-                title: str | None = None,
-                xLabel: str | None = None,
-                yLabel: str | None = None,
-                xLim: Tuple | None = None,
-                yLim: Tuple | None = None,
-                xticks: list[int] | None = None,
-                yticks: list[int] | None = None,
-                grid: bool = False):
-        ax = self._getAxis(row, col)
-        ax.xaxis.set_tick_params(labelsize=32, width=4)
-        ax.yaxis.set_tick_params(labelsize=32, width=4)
-        ax.plot(x, y)
-        if title is not None:
-            ax.set_title(title, fontsize=48)
-        if xLabel is not None:
-            ax.set_xlabel(xLabel, fontsize=32)
-        if yLabel is not None:
-            ax.set_ylabel(yLabel, fontsize=32)
-        if xLim is not None:
-            ax.set_xlim(xLim)
-        if yLim is not None:
-            ax.set_ylim(yLim)
-        if xticks is not None:
-            ax.set_xticks(xticks)
-        if yticks is not None:
-            ax.set_yticks(yticks)
-        if grid:
-            ax.grid()
-    
-    def addSinglePlot(self,
-                      x,
-                      y,
-                      title: str | None = None,
-                      xLabel: str | None = None,
-                      yLabel: str | None = None,
-                      xLim: Tuple | None = None,
-                      yLim: Tuple | None = None,
-                      xticks: list[int] | None = None,
-                      yticks: list[int] | None = None,
-                      grid: bool = False):
-        self.addPlot(0, 0, x, y, title, xLabel, yLabel, xLim, yLim, xticks, yticks, grid)
-
-    def addLegend(self, row: int, col: int, labels: list[str]):
-        ax = self._getAxis(row, col)
-        ax.legend(labels, prop={"size": 36})
-
-    def savePlot(self):
-        makedirs(f"{getOutputDir(2)}/figures", exist_ok=True)
-        self.fig.savefig(f"{getOutputDir(2)}/figures/{self.filename}")
 
 
 fs = 250 * 1e6
@@ -155,46 +68,63 @@ def task1_transmission(timeVec, f0, plot=False):
     print(f"Pulse length: {pulseLengthMillimeters:.2f} mm")
 
     if plot:
-        gaussFig = Figure(1, 1, "Gauss Weighted Sinusoidal",
+        gaussFig = Figure(1, 1, "Gaussian Weighted Sinusoidal",
                           "task1_gauss_pulse.png")
-        gaussFig.addPlot(
-            0,
-            0,
-            timeVec * 1e6,
-            gausspulse,
-            title=f"Gauss Pulse (f0={f0*1e-6} MHz, bw={bw_abs*1e-6} MHz)",
-            xLabel="Time [us]",
-            yLabel="Amplitude [A]")
+        gaussFig.addPlot(0,
+                         0,
+                         timeVec * 1e6,
+                         gausspulse,
+                         xLabel="Time [us]",
+                         yLabel="Amplitude [A]",
+                         grid=True)
         gaussFig.addSinglePlot(timeVec * 1e6, iGausspulse, grid=True)
         gaussFig.addSinglePlot(timeVec * 1e6, envGaussPulse)
-        gaussFig.addLegend(0, 0,["Real part", "Imaginary Part", "Envelope"])
-
+        gaussFig.addLegend(0, 0, ["Real part", "Imaginary Part", "Envelope"])
         gaussFig.savePlot()
 
-        signalsFig = Figure(1, 2, "Signals and Spectra", "task1_signals.png")
-        signalsFig.addPlot(
-            0,
-            0,
-            timeVec * 1e6,
-            gausspulse,
-            title=f"Signals (f0={f0*1e-6} MHz, bw={bw_abs*1e-6} MHz)",
-            xLabel="Time [us]",
-            yLabel="Amplitude [A]",
-        )
-        signalsFig.addPlot(0, 0, timeVec * 1e6, paddedSquarePulse)
-        signalsFig.addLegend(0, 0, ["Gauss Pulse", "Square Pulse"])
-
-        signalsFig.addPlot(
+        gaussPulseFig = Figure(1, 2, "Gauss Pulse", "task1_gauss.png")
+        gaussPulseFig.addPlot(0,
+                              0,
+                              timeVec * 1e6,
+                              gausspulse,
+                              title=f"Signal",
+                              xLabel="Time [us]",
+                              yLabel="Amplitude [A]",
+                              grid=True)
+        gaussPulseFig.addPlot(
             0,
             1,
             gaussFreqs * 1e-6,
             gaussSpectrum,
-            title=f"Power Spectra (f0={f0*1e-6} MHz, T={1/f0*1e6:.2f} us)",
+            title=f"Power Spectrum",
             xLabel="Frequency [MHz]",
             yLabel="Power [dB]",
             xLim=[-(f0 * 5 * 1e-6), (f0 * 5 * 1e-6)],
             # yLim=[-45, 10],
-        )
+            grid=True)
+        gaussPulseFig.savePlot()
+
+        squarePulseFig = Figure(1, 2, "Square Pulse", "task1_square.png")
+        squarePulseFig.addPlot(0,
+                               0,
+                               timeVec * 1e6,
+                               paddedSquarePulse,
+                               title=f"Signal",
+                               xLabel="Time [us]",
+                               yLabel="Amplitude [A]",
+                               grid=True)
+        squarePulseFig.addPlot(
+            0,
+            1,
+            squareFreqs * 1e-6,
+            squareSpectrum,
+            title=f"Power Spectrum (f0={f0*1e-6} MHz, T={1/f0*1e6:.2f} us)",
+            xLabel="Frequency [MHz]",
+            yLabel="Power [dB]",
+            xLim=[-(f0 * 5 * 1e-6), (f0 * 5 * 1e-6)],
+            # yLim=[-45, 10],
+            grid=True)
+        squarePulseFig.savePlot()
 
     return gausspulse, paddedSquarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
 
