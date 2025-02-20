@@ -69,3 +69,32 @@ and their power spectra:
 ----------
 >> ![task1_square](figures/task1_square.png)
 >> Gaussian pulse with associated power spectrum.
+
+From the signal spectra we observe that the gaussian weighted sinusoidals only
+have peaks around the base frequency `f0 = 2.5MHz`. The square pulse on the
+other hand, has a number of harmonics which we can see as the smaller peaks.
+
+### Calculating Spatial Pulse Length (SPL)
+
+To calculate the spatial length of the pulses we use the Hilbert function to
+find the pulse envelope, then find the 'ends' of the pulse as the points on
+either end where the amplitude of the signal has dropped to half of the maximum
+amplitude. This duration can be converted to a spatial length using the speed
+of sound `c = 1540m/s`.
+
+```python
+signalEnv = abs(signal.hilbert(envGaussPulse))
+threshold = max(signalEnv) / 2
+
+startIdx = np.where(signalEnv > threshold)[0][0]
+endIdx = np.where(signalEnv > threshold)[0][-1]
+
+pulseLengthN = endIdx - startIdx
+pulseLength = pulseLengthN / fs
+
+speedOfSoundMetersPerSecond = 1540
+pulseLengthMillimeters = pulseLength * speedOfSoundMetersPerSecond * 1e3
+```
+
+Performing this calculation we get an output of a pulse duration of 511 samples,
+which comes out to a spatial pulse length of 3.15mm.
