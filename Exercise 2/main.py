@@ -1,7 +1,9 @@
-from typing import Tuple
 import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
+
+from os import makedirs
+from typing import Tuple
 
 from helpers import getOutputDir
 
@@ -24,8 +26,88 @@ def zeroPad(signal, N):
         return np.pad(signal, padWidth)
     return np.pad(signal, (padWidth, padWidth + 1))
 
-def savePlot(fig, name):
-    fig.savefig(f"{getOutputDir(2)}/figures/{name}")
+
+class Figure:
+
+    def __init__(self,
+                 rows: int,
+                 cols: int,
+                 title: str,
+                 filename: str,
+                 figsize=(30, 20)):
+        self.rows = rows
+        self.cols = cols
+        self.title = title
+        self.filename = filename
+        self.fig, self.axes = plt.subplots(nrows=self.rows,
+                                           ncols=self.cols,
+                                           figsize=figsize)
+
+    def _getAxis(self, row: int, col: int):
+        if self.rows == 1 and self.cols == 1:
+            return self.axes
+        elif self.rows == 1 and self.cols > 1:
+            return self.axes[col]
+        elif self.cols == 1 and self.rows > 1:
+            return self.axes[row]
+        else:
+            return self.axes[row, col]
+    
+    def addPlot(self,
+                row: int,
+                col: int,
+                x,
+                y,
+                title: str | None = None,
+                xLabel: str | None = None,
+                yLabel: str | None = None,
+                xLim: Tuple | None = None,
+                yLim: Tuple | None = None,
+                xticks: list[int] | None = None,
+                yticks: list[int] | None = None,
+                grid: bool = False):
+        ax = self._getAxis(row, col)
+        ax.xaxis.set_tick_params(labelsize=32, width=4)
+        ax.yaxis.set_tick_params(labelsize=32, width=4)
+        ax.plot(x, y)
+        if title is not None:
+            ax.set_title(title, fontsize=48)
+        if xLabel is not None:
+            ax.set_xlabel(xLabel, fontsize=32)
+        if yLabel is not None:
+            ax.set_ylabel(yLabel, fontsize=32)
+        if xLim is not None:
+            ax.set_xlim(xLim)
+        if yLim is not None:
+            ax.set_ylim(yLim)
+        if xticks is not None:
+            ax.set_xticks(xticks)
+        if yticks is not None:
+            ax.set_yticks(yticks)
+        if grid:
+            ax.grid()
+    
+    def addSinglePlot(self,
+                      x,
+                      y,
+                      title: str | None = None,
+                      xLabel: str | None = None,
+                      yLabel: str | None = None,
+                      xLim: Tuple | None = None,
+                      yLim: Tuple | None = None,
+                      xticks: list[int] | None = None,
+                      yticks: list[int] | None = None,
+                      grid: bool = False):
+        self.addPlot(0, 0, x, y, title, xLabel, yLabel, xLim, yLim, xticks, yticks, grid)
+
+    def addLegend(self, row: int, col: int, labels: list[str]):
+        ax = self._getAxis(row, col)
+        ax.legend(labels, prop={"size": 36})
+
+    def savePlot(self):
+        makedirs(f"{getOutputDir(2)}/figures", exist_ok=True)
+        self.fig.savefig(f"{getOutputDir(2)}/figures/{self.filename}")
+
 
 fs = 250 * 1e6
 f0 = 2.5 * 1e6
@@ -73,40 +155,52 @@ def task1_transmission(timeVec, f0, plot=False):
     print(f"Pulse length: {pulseLengthMillimeters:.2f} mm")
 
     if plot:
-        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(30, 20))
-        axes.plot(timeVec * 1e6, gausspulse)
-        axes.plot(timeVec * 1e6, iGausspulse)
-        axes.plot(timeVec * 1e6, envGaussPulse)
-        axes.plot(timeVec * 1e6, signalEnv)
-        axes.legend(
-            ["Real part", "Imaginary Part", "Envelope", "Pulse Envelope"])
-        axes.set_title(f"Gauss Pulse (f0={f0*1e-6} MHz, bw={bw_abs*1e-6} MHz)")
+        gaussFig = Figure(1, 1, "Gauss Weighted Sinusoidal",
+                          "task1_gauss_pulse.png")
+        gaussFig.addPlot(
+            0,
+            0,
+            timeVec * 1e6,
+            gausspulse,
+            title=f"Gauss Pulse (f0={f0*1e-6} MHz, bw={bw_abs*1e-6} MHz)",
+            xLabel="Time [us]",
+            yLabel="Amplitude [A]")
+        gaussFig.addSinglePlot(timeVec * 1e6, iGausspulse, grid=True)
+        gaussFig.addSinglePlot(timeVec * 1e6, envGaussPulse)
+        gaussFig.addLegend(0, 0,["Real part", "Imaginary Part", "Envelope"])
 
-        savePlot(fig, "task1_gauss_pulse.png")
+        gaussFig.savePlot()
 
-        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(60, 40))
+        signalsFig = Figure(1, 2, "Signals and Spectra", "task1_signals.png")
+        signalsFig.addPlot(
+            0,
+            0,
+            timeVec * 1e6,
+            gausspulse,
+            title=f"Signals (f0={f0*1e-6} MHz, bw={bw_abs*1e-6} MHz)",
+            xLabel="Time [us]",
+            yLabel="Amplitude [A]",
+        )
+        signalsFig.addPlot(0, 0, timeVec * 1e6, paddedSquarePulse)
+        signalsFig.addLegend(0, 0, ["Gauss Pulse", "Square Pulse"])
 
-        axes[0].plot(timeVec * 1e6, gausspulse)
-        axes[0].plot(timeVec * 1e6, paddedSquarePulse)
-        axes[0].set_title(f"Gauss Pulse vs. Square pulse")
-        axes[0].legend(["Gauss Pulse", "Square Pulse"])
-
-        axes[1].plot(gaussFreqs * 1e-6, gaussSpectrum)
-        axes[1].plot(squareFreqs * 1e-6, squareSpectrum)
-
-        axes[1].set_xlim(-(f0 * 5 * 1e-6), (f0 * 5 * 1e-6))
-        # axes[1].set_ylim(-45, 10)
-
-        axes[1].set_title(
-            f"Power Spectra (f0={f0*1e-6} MHz, T={1/f0*1e6:.2f} us)")
-        axes[1].legend(["Gauss Pulse", "Square Pulse"])
+        signalsFig.addPlot(
+            0,
+            1,
+            gaussFreqs * 1e-6,
+            gaussSpectrum,
+            title=f"Power Spectra (f0={f0*1e-6} MHz, T={1/f0*1e6:.2f} us)",
+            xLabel="Frequency [MHz]",
+            yLabel="Power [dB]",
+            xLim=[-(f0 * 5 * 1e-6), (f0 * 5 * 1e-6)],
+            # yLim=[-45, 10],
+        )
 
     return gausspulse, paddedSquarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
 
 
-def task1_transducer(
-                     fc,
-        timeVec,
+def task1_transducer(fc,
+                     timeVec,
                      signals: list,
                      freqs,
                      spectra: list,
@@ -233,6 +327,7 @@ def task1():
 
     # plt.show()
 
+
 def pulseEchoResponse(r, t):
     # G(r, t) = (sigma * (t - r/c)) / (4 * pi * r))
     # c = 1540m/s
@@ -241,21 +336,22 @@ def pulseEchoResponse(r, t):
     # To model two-way response: square signal
     sigma = 1
     c = 1540
-    numerator = sigma * (t - r/c)
+    numerator = sigma * (t - r / c)
     denominator = 4 * np.pi * r
     return (numerator / denominator)**2
+
 
 def depthAxis(timeVec: np.ndarray, scattererPositions: np.ndarray):
     depth = np.zeros((len(timeVec), len(scattererPositions)))
     for i, t in enumerate(timeVec):
         for j, pos in enumerate(scattererPositions):
             depth[i][j] = pulseEchoResponse(pos, t)
-    return depth    
+    return depth
+
 
 def task2(timeVec, transmittedPulse):
     scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
     depth = depthAxis(timeVec, scattererPositionsCm * 1e-2)
-
 
 
 def main():
