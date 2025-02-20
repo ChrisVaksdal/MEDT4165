@@ -143,7 +143,7 @@ def task1_transducer(fc,
 
     if plot:
         transducerFig = Figure(2, 1, "Transducer Response",
-                               "task1_transducer.png")
+                               "task1_transducer.png", (30, 30))
 
         transducerFig.addPlot(0,
                               0,
@@ -208,30 +208,46 @@ def task1_combined(timeVec,
         combinedSpectra.append(convolvedSpectrum / np.max(convolvedSpectrum))
 
     if plot:
-        fig, axes = plt.subplots(nrows=len(signals), ncols=2, figsize=(60, 40))
-
+        convolvedSignalFig = Figure(len(signals), 2, "Convolved Signals",
+                                    "task1_convolved.png", (60, 60))
         for i, rSig, cSig, name in zip(range(len(signals)), signals,
                                        combinedSignals, names):
-            axes[i][0].plot(timeVec * 1e6, rSig)
-            axes[i][0].plot(timeVec * 1e6, cSig)
-            axes[i][0].set_title(f"Convolving {name} with transducer")
-            axes[i][0].legend(
-                [f"Raw {name}", f"{name} convolved with transducer"])
-            axes[i][0].set_xticks(
-                np.linspace(timeVec[0] * 1e6, timeVec[-1] * 1e6, 11))
-
+            convolvedSignalFig.addPlot(i,
+                                       0,
+                                       timeVec * 1e6,
+                                       rSig,
+                                       title=f"Convolving {name} with transducer",
+                                       xLabel="Time [us]",
+                                       yLabel="Amplitude [A]",
+                                       xLim=[-T * 1e6 / 4, T * 1e6 / 4],
+                                       xticks=np.linspace(timeVec[0] * 1e6, timeVec[-1] * 1e6, 11),
+                                       grid=True)
+            convolvedSignalFig.addPlot(i,
+                                       0,
+                                       timeVec * 1e6,
+                                       cSig)
+            convolvedSignalFig.addLegend(i, 0, [f"Raw {name}", f"{name} convolved with transducer"])
+        minFreq, maxFreq = -f0 * 6 * 1e-6, f0 * 6 * 1e-6
         for i, rSpectrum, cSpectrum, name in zip(range(len(combinedSpectra)),
                                                  spectra, combinedSignals,
                                                  names):
-            axes[i][1].plot(freqs * 1e-6, rSpectrum / np.max(rSpectrum))
-            axes[i][1].plot(freqs * 1e-6, cSpectrum)
-            axes[i][1].set_title(
-                f"Spectrum of {name} with and without transducer influence")
-            axes[i][1].legend(
-                [f"Raw {name}", f"{name} convolved with transducer"])
-            minFreq, maxFreq = -f0 * 6 * 1e-6, f0 * 6 * 1e-6
-            axes[i][1].set_xlim((minFreq, maxFreq))
-            axes[i][1].set_xticks(np.arange(minFreq, maxFreq, 2))
+            convolvedSignalFig.addPlot(i,
+                                       1,
+                                       freqs * 1e-6,
+                                       rSpectrum / np.max(rSpectrum),
+                                       title=f"Spectrum of {name} convolved with transducer",
+                                       xLabel="Frequency [MHz]",
+                                       yLabel="Power [dB]",
+                                       xLim=[minFreq, maxFreq],
+                                       xticks=np.arange(minFreq, maxFreq, 2),
+                                       grid=True)
+            convolvedSignalFig.addPlot(i,
+                                       1,
+                                       freqs * 1e-6,
+                                       cSpectrum)
+            convolvedSignalFig.addLegend(i, 1, [f"Raw {name}", f"{name} convolved with transducer"])
+
+        convolvedSignalFig.savePlot()
 
     return combinedSignals, combinedSpectra
 
@@ -256,14 +272,14 @@ def task1():
         fftFreqs, [gSpectrum, sSpectrum], ["Gauss Pulse", "Square Pulse"],
         plot=True)
 
-    # convolvedSignals, convolvedSpectra = task1_combined(
-    #     timeVec,
-    #     f0,
-    #     transducerImpulse,
-    #     fftFreqs,
-    #     transducerFrequency, [gPulse, sPulse], [gSpectrum, sSpectrum],
-    #     ["Gauss Pulse", "Square Pulse"],
-    #     plot=False)
+    convolvedSignals, convolvedSpectra = task1_combined(
+        timeVec,
+        f0,
+        transducerImpulse,
+        fftFreqs,
+        transducerFrequency, [gPulse, sPulse], [gSpectrum, sSpectrum],
+        ["Gauss Pulse", "Square Pulse"],
+        plot=True)
 
     # fastGPulse, fastSPulse, _, _, _ = task1_transmission(f0, 4 * 1e6)
     # fastConvolvedSignals, fastConvolvedSpectra = task1_combined(

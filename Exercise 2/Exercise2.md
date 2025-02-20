@@ -113,3 +113,26 @@ Here's what the impulse- and frequency responses look like:
 
 >> ![task1_transducer](figures/task1_transducer.png)
 >> Transducer responses along with signals and spectra.
+
+### Transducer Influence on Signal
+
+Now to see what happens when the signal transducer interact with our pulses.
+The way these signals combine is called convolution in the time domain, and is
+equivalent to multiplication in the frequency domain. Here's some python code
+for combining the signal with the transducer response:
+
+```python
+convolvedSignal = np.convolve(sig, impulseResponse, "same")
+convolvedSignal /= np.max(convolvedSignal)  # Normalize signal
+
+convolvedSpectrum = freqResponse * spectrum
+```
+
+We use `np.convolve()` to perform the convolution, specifying `"same"` makes
+the output signal be the same length (same number of samples) as the input (as
+opposed to twice as long). The following figure shows the transducer impulses
+along with our pulses:
+
+>> ![task1_convolved](figures/task1_convolved.png)
+>> Gauss- and square-pulses along with transducer responses and convolved
+>> results.
