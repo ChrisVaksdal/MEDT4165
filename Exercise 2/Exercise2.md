@@ -17,7 +17,7 @@ f0 = 2.5 * 1e6      # Signal base frequency
 T = 10 * 1e-6       # Length of time vector
 N = int(T * fs)     # Number of samples
 
-bw = 0.3 # Relative bandwidth. bw_abs = 75MHz
+bw = 0.3 # Relative bandwidth. bw_abs = 7.5MHz
 
 timeVec = np.linspace(-T / 2, T / 2, N)
 
@@ -61,18 +61,20 @@ def zeroPad(signal, N):
 paddedSquarePulse = zeroPad(squarePulse, len(gaussPulse))
 ```
 
-Using the power spectrum functionality from Exercise 1 we can plot the signals
-and their power spectra:
+Here are the pulses and their respective spectra:
 
->> ![task1_gauss](figures/task1_gauss.png)
->> Gaussian pulse with associated power spectrum.
-----------
->> ![task1_square](figures/task1_square.png)
->> Gaussian pulse with associated power spectrum.
+>> ![task1_pulses](figures/task1_pulses.png)
+>> Square Wave pulse with associated power spectrum. -->
 
 From the signal spectra we observe that the gaussian weighted sinusoidals only
 have peaks around the base frequency `f0 = 2.5MHz`. The square pulse on the
 other hand, has a number of harmonics which we can see as the smaller peaks.
+
+As expected, the pulses have roughly the same length in time and from the
+spectra we can also see that both signals have a significant peak around
+`f = f0 = 2.5MHz`. Note that the gaussian pulse has *all* its energy spread at
+`&plusmn;2.5MHz`, while the square pulse also has smaller peaks at odd-numbered
+multiples of the base frequency (harmonics!).
 
 ### Calculating Spatial Pulse Length (SPL)
 
@@ -83,8 +85,8 @@ amplitude. This duration can be converted to a spatial length using the speed
 of sound `c = 1540m/s`.
 
 ```python
-signalEnv = abs(signal.hilbert(envGaussPulse))
-threshold = max(signalEnv) / 2
+signalEnv = abs(signal.hilbert(envGaussPulse))  # Calculate pulse envelope
+threshold = max(signalEnv) / 2  # To find 'start' and 'end' of pulse
 
 startIdx = np.where(signalEnv > threshold)[0][0]
 endIdx = np.where(signalEnv > threshold)[0][-1]
@@ -109,7 +111,8 @@ impulseResponse = signal.gausspulse(timeVec, fc=2.5*1e6, bw=0.4)
 freqResponse, transducerFreqs = powerSpectrum(impulseResponse, fs)
 ```
 
-Here's what the impulse- and frequency responses look like:
+Here's what the impulse- and frequency responses look like along with the
+pulses from before to compare:
 
 >> ![task1_transducer](figures/task1_transducer.png)
 >> Transducer responses along with signals and spectra.
@@ -136,3 +139,48 @@ along with our pulses:
 >> ![task1_convolved](figures/task1_convolved.png)
 >> Gauss- and square-pulses along with transducer responses and convolved
 >> results.
+
+In the convolved plots, note that the gauss pulse is largely unchanged in terms
+of its shape. This should not be surprising, they are almost the same signal
+after all. The square pulse loses its square shape, becoming rounded by the
+transducer. This effect is apparant in the spectrum of the square signal as
+well, where you can see the harmonics have been eliminated.
+
+If we up the transmit frequency to 4MHz, but keep the transducer the same, we
+get signals and spectra like these:
+
+>> ![task1_fast_signal](figures/task1_fast_signal.png)
+>> Higher frequency Gauss- and square-pulses convolved with transducer.
+-----
+>> ![task1_fast_spectrum](figures/task1_fast_spectrum.png)
+>> Higher frequency Gauss- and square-pulses convolved with transducer.
+
+We see that when convolving the higher frequency transmitted signal with the
+transducer can mess up the signal. The shape of the signal is altered and we
+see in the spectra that the frequency peaks have moved to somewhere between the
+original transmitted frequency and the center frequency of the transducer.
+
+I believe the pulse energy outside of the transducer bandwidth is lost to heat
+generated through friction and other mechanical or electromagnetic resistances
+in the transducer. In other words, that energy will go towards forcing the
+transducer to move in a way it would not otherwise move and that resistance to
+moving in that way would generate heat.
+
+## Part 2 - Reception
+
+### The Received Signal
+
+The received signal is a time-variant signal as before, encoding within it
+information about distances. To generate this received signal over time, we are
+going to imagine a sound wave travelling in a line that's 15 cm long. Along the
+way, at 1, 3, 5, 7, 9, 11 and 13 cm distance, there are scatterers that will
+produce reflections/echoes as the wave travels through. To create the reflected
+signal we receive, we define a depth axis containing the scatterer impulses
+(pulse echo response means squared Green's function. Impulses are scaled with
+depth) and use that as a propagation filter.
+
+```python
+...
+```
+
+MORE ABOUT RECEIVED SIGNAL COMING SOON.
