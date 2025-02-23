@@ -34,12 +34,18 @@ def generateSquarePulse(timeVec, fc, nCycles):
     return zeroPad(pulse, len(timeVec))
 
 
+def getNoiseTargetSNR(signal, targetSNRdB):
+    noise = np.random.randn(len(signal))
+    power = 1 / np.linalg.norm(noise) * np.linalg.norm(signal)
+    return noise * power / (10**(targetSNRdB / 20))
+
+
 fs = 250 * 1e6
 f0 = 2.5 * 1e6
 T = 10 * 1e-6
 
 
-def task1_transmission(timeVec, f0, plot=False):
+def task1_transmission(timeVec, f0, plot):
     bw = 0.3
     bw_abs = bw * f0
 
@@ -139,13 +145,8 @@ def task1_transmission(timeVec, f0, plot=False):
     return gausspulse, paddedSquarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
 
 
-def task1_transducer(timeVec,
-                     fc,
-                     signals: list,
-                     freqs,
-                     spectra: list,
-                     names: list,
-                     plot=False):
+def task1_transducer(timeVec, fc, signals: list, freqs, spectra: list,
+                     names: list, plot):
     bw = 0.4
 
     impulseResponse = signal.gausspulse(timeVec, fc=fc, bw=bw)
@@ -216,15 +217,9 @@ def plotSignalsAndSpectra(title, timeVec, signals, freqs, spectra, names):
     signalsFig.savePlot()
 
 
-def task1_combined(timeVec,
-                   f0,
-                   transducerImpulseResponse,
-                   freqs,
-                   transducerFrequencyResponse,
-                   signals: list,
-                   spectra,
-                   names: list,
-                   plot=False):
+def task1_combined(timeVec, f0, transducerImpulseResponse, freqs,
+                   transducerFrequencyResponse, signals: list, spectra,
+                   names: list, plot):
 
     combinedSignals = []
     combinedSpectra = []
@@ -288,13 +283,7 @@ def task1(plot=False):
     return timeVec, convolvedSignals
 
 
-def getNoiseTargetSNR(signal, targetSNRdB):
-    noise = np.random.randn(len(signal))
-    power = 1 / np.linalg.norm(noise) * np.linalg.norm(signal)
-    return noise * power / (10**(targetSNRdB / 20))
-
-
-def task2_receive(pulses, plot=False):
+def task2_receive(pulses, plot):
     timeVec = np.arange(-5 / f0, 2 * 15e-2 / 1540, 1 / fs)
     scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
     scatterIndices = [
@@ -305,7 +294,7 @@ def task2_receive(pulses, plot=False):
     gamma = 1e-2  # Picked at random
     reflections = np.zeros_like(timeVec)
     reflections[scatterIndices] = gamma / (4 * np.pi * scattererPositionsCm *
-                                           1e-2)
+                                           1e-2)**2
 
     gauss = pulses[0][700:1800]  # Slice to avoid spending forever on zeros
     square = pulses[1][700:1800]
@@ -344,10 +333,10 @@ def task2_receive(pulses, plot=False):
         noisyDepthFig.addLegend(0, 0, ["Gauss", "Square"])
         noisyDepthFig.savePlot()
 
-    return noisyGauss, noisySquare
+    return timeVec, noisyGauss, noisySquare
 
 
-def task2_filter(pulses, plot=False):
+def task2_filter(timeVec, pulses, plot):
     fHigh = 3 * 1e6
     fLow = 2 * 1e6
     [b, a] = signal.butter(4, [fLow, fHigh], btype="bandpass", fs=fs)
@@ -358,6 +347,9 @@ def task2_filter(pulses, plot=False):
 
     [_, p] = signal.freqz(b, a, len(freqs), whole=True, fs=fs)
     p = 20 * np.log10(np.fft.fftshift(abs(p) + np.finfo(float).eps))
+
+    filteredGauss = signal.filtfilt(b, a, pulses[0])
+    filteredSquare = signal.filtfilt(b, a, pulses[1])
 
     if plot:
         filterFigure = Figure(1, 1, "Bandpass filter", "task2_filter.png",
@@ -377,10 +369,74 @@ def task2_filter(pulses, plot=False):
             0, 0, ["Filter response", "Gauss spectrum", "Square spectrum"])
         filterFigure.savePlot()
 
+        filteredFigure = Figure(2, 1, "Filtered signals", "task2_filtered.png",
+                                (60, 30))
+        filteredFigure.addPlot(0,
+                               0,
+                               timeVec * 1e2 * 1540,
+                               pulses[0],
+                               title="Gauss",
+                               yLabel="Amplitude",
+                               grid=True,
+                               dotted=True)
+        filteredFigure.addPlot(0, 0, timeVec * 1e2 * 1540, filteredGauss)
+        filteredFigure.addLegend(0, 0, ["Received", "Filtered"])
+
+        filteredFigure.addPlot(1,
+                               0,
+                               timeVec * 1e2 * 1540,
+                               pulses[1],
+                               title="Square",
+                               xLabel="Depth (cm)",
+                               yLabel="Amplitude",
+                               grid=True,
+                               dotted=True)
+        filteredFigure.addPlot(1, 0, timeVec * 1e2 * 1540, filteredSquare)
+        filteredFigure.addLegend(1, 0, ["Received", "Filtered"])
+        filteredFigure.savePlot()
+
+    return filteredGauss, filteredSquare
+
+
+def task2_tgc(timeVec, filteredGauss, filteredSquare, plot):
+    rAxis = timeVec * 1540 / 2
+    depthGain = 20 * (4 * np.pi * rAxis)**2
+    tgcGauss = filteredGauss * depthGain
+    tgcSquare = filteredSquare * depthGain
+
+    if plot:
+        tgcFigure = Figure(2, 1, "TGC", "task2_tgc.png", (60, 60))
+        tgcFigure.addPlot(0,
+                          0,
+                          timeVec * 1e2 * 1540,
+                          filteredGauss,
+                          title="Gauss",
+                          xLabel="Depth (cm)",
+                          yLabel="Amplitude",
+                          grid=True,
+                          dotted=True)
+        tgcFigure.addPlot(0, 0, timeVec * 1e2 * 1540, tgcGauss)
+        tgcFigure.addLegend(0, 0, ["Not compensated", "Compensated"])
+
+        tgcFigure.addPlot(1,
+                          0,
+                          timeVec * 1e2 * 1540,
+                          filteredSquare,
+                          title="Square",
+                          xLabel="Depth (cm)",
+                          yLabel="Amplitude",
+                          grid=True,
+                          dotted=True)
+        tgcFigure.addPlot(1, 0, timeVec * 1e2 * 1540, tgcSquare)
+        tgcFigure.addLegend(1, 0, ["Not compensated", "Compensated"])
+        tgcFigure.savePlot()
+
 
 def task2(pulseTimeVec, pulses, plot=False):
-    receivedGauss, receivedSquare = task2_receive(pulses, plot=plot)
-    task2_filter([receivedGauss, receivedSquare], plot=plot)
+    timeVec, receivedGauss, receivedSquare = task2_receive(pulses, plot=plot)
+    filteredGauss, filteredSquare = task2_filter(
+        timeVec, [receivedGauss, receivedSquare], plot=plot)
+    task2_tgc(timeVec, filteredGauss, filteredSquare, plot=plot)
 
 
 def main():

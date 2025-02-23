@@ -247,5 +247,45 @@ p = 20 * np.log10(np.fft.fftshift(abs(p) + np.finfo(float).eps))
 Plotting the frequency response of the filter along with the power spectra of
 our signal, we get this:
 
->> ![task2_filter](task2_filter.png)
+>> ![task2_filter](figures/task2_filter.png)
 >> Frequency response of bandpass-filter along with spectra of received signals.
+
+Now to apply the filter to the received signals we use `scipy.signal.filtfilt`
+in order to apply the filter in both directions. this is to preserve phase
+information in the signal.
+
+```python
+filteredGauss = signal.filtfilt(b, a, noisyGauss)
+filteredSquare = signal.filtfilt(b, a, noisySquare)
+```
+
+>> ![task2_filtered](figures/task2_filtered.png)
+>> Received and filtered signals for gauss pulse and square pulse.
+
+As you can see, the filtered signals preserve the reflected pulses as desired,
+but otherwise removes most of the noise present in the signal.
+
+### Time-Gain Compensation (TGC)
+
+We know the received signal is attenuated predictably based on depth. Since
+this attenuation only depends on time between sending and receiving (which in
+turn is just based on the distance to the scatterer). So we simply define the
+inverse of this attenuation as a gain profile we can apply to the received
+signal. The resulting signals amplitude is now in theory independant of depth.
+
+```python
+rAxis = timeVec * 1540 / 2
+depthGain = 20 * (4 * np.pi * rAxis)**2
+tgcGauss = filteredGauss * depthGain
+tgcSquare = filteredSquare * depthGain
+```
+
+The resulting signals (compared to the original, non-compensated signals) look
+like this:
+
+>> ![task2_tgc](figures/task2_tgc.png)
+>> Received and filtered signals for gauss pulse and square pulse.
+
+In the compensated plots, notice how each of the reflector impulses have the
+same amplitude. This has the side effect of also amplifying the noise more and
+more, meaning our SNR goes down over time (aka. with increased depth).
