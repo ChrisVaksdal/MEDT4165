@@ -288,35 +288,34 @@ def task1(plot=False):
     return timeVec, convolvedSignals
 
 
+def getNoiseTargetSNR(signal, targetSNRdB):
+    noise = np.random.randn(len(signal))
+    power = 1 / np.linalg.norm(noise) * np.linalg.norm(signal)
+    return noise * power / (10**(targetSNRdB / 20))
+
+
 def task2_receive(pulses, plot=False):
-    scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
     timeVec = np.arange(-5 / f0, 2 * 15e-2 / 1540, 1 / fs)
+    scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
     scatterIndices = [
         np.argmin(np.abs(timeVec - 2 * r / 1540))
         for r in scattererPositionsCm * 1e-2
     ]
 
-    gamma = 1e-2
+    gamma = 1e-2  # Picked at random
     reflections = np.zeros_like(timeVec)
     reflections[scatterIndices] = gamma / (4 * np.pi * scattererPositionsCm *
                                            1e-2)
 
-    gauss = pulses[0][700:1800]
+    gauss = pulses[0][700:1800]  # Slice to avoid spending forever on zeros
     square = pulses[1][700:1800]
 
     receivedGauss = np.convolve(gauss, reflections, "same")
     receivedSquare = np.convolve(square, reflections, "same")
 
     SNR = 20
-    gaussNoise = np.random.randn(len(timeVec))
-    gaussNoise = gaussNoise / np.linalg.norm(gaussNoise) * np.linalg.norm(
-        receivedGauss) / 10**(SNR / 20)
-    squareNoise = np.random.randn(len(timeVec))
-    squareNoise = squareNoise / np.linalg.norm(squareNoise) * np.linalg.norm(
-        receivedSquare) / 10**(SNR / 20)
-
-    noisyGauss = receivedGauss + gaussNoise
-    noisySquare = receivedSquare + squareNoise
+    noisyGauss = receivedGauss + getNoiseTargetSNR(receivedGauss, SNR)
+    noisySquare = receivedSquare + getNoiseTargetSNR(receivedSquare, SNR)
 
     if plot:
         depthFig = Figure(1, 1, "Received signals without noise",
@@ -330,18 +329,20 @@ def task2_receive(pulses, plot=False):
                          grid=True)
         depthFig.addPlot(0, 0, timeVec * 1e2 * 1540, receivedSquare)
         depthFig.addLegend(0, 0, ["Gauss", "Square"])
+        depthFig.savePlot()
 
-        depthFig = Figure(1, 1, "Received signals with",
-                          "task2_depth_noisy.png", (60, 30))
-        depthFig.addPlot(0,
-                         0,
-                         timeVec * 1e2 * 1540,
-                         noisyGauss,
-                         xLabel="Depth (cm)",
-                         yLabel="Amplitude",
-                         grid=True)
-        depthFig.addPlot(0, 0, timeVec * 1e2 * 1540, noisySquare)
-        depthFig.addLegend(0, 0, ["Gauss", "Square"])
+        noisyDepthFig = Figure(1, 1, "Received signals with noise",
+                               "task2_depth_noisy.png", (60, 30))
+        noisyDepthFig.addPlot(0,
+                              0,
+                              timeVec * 1e2 * 1540,
+                              noisyGauss,
+                              xLabel="Depth (cm)",
+                              yLabel="Amplitude",
+                              grid=True)
+        noisyDepthFig.addPlot(0, 0, timeVec * 1e2 * 1540, noisySquare)
+        noisyDepthFig.addLegend(0, 0, ["Gauss", "Square"])
+        noisyDepthFig.savePlot()
 
     return noisyGauss, noisySquare
 
@@ -358,23 +359,25 @@ def task2_filter(pulses, plot=False):
     [w, p] = signal.freqz(b, a, len(freqs), whole=True, fs=fs)
     p = 20 * np.log10(np.fft.fftshift(abs(p) + np.finfo(float).eps))
 
-    filterFigure = Figure(1, 1, "Bandpass filter", "task2_filter.png", (60, 30))
-    filterFigure.addPlot(0,
-                         0,
-                         w,
-                         p,
-                         xLabel="Frequency (Hz)",
-                         yLabel="Amplitude",
-                         grid=True)
-    for i, spectrum in enumerate(spectra):
+    if plot:
+        filterFigure = Figure(1, 1, "Bandpass filter", "task2_filter.png",
+                              (60, 30))
         filterFigure.addPlot(0,
                              0,
-                             freqs * 1e-6,
-                             spectrum,
+                             w,
+                             p,
                              xLabel="Frequency (Hz)",
                              yLabel="Amplitude",
-                             xLim=[-10, 10],
                              grid=True)
+        for i, spectrum in enumerate(spectra):
+            filterFigure.addPlot(0,
+                                 0,
+                                 freqs * 1e-6,
+                                 spectrum,
+                                 xLabel="Frequency (Hz)",
+                                 yLabel="Amplitude",
+                                 xLim=[-10, 10],
+                                 grid=True)
 
 
 def task2(pulseTimeVec, pulses, plot=False):
@@ -386,8 +389,8 @@ def main():
     print("Exercise 2")
 
     timeVec, pulses = task1(plot=True)
-    # plt.show()
     task2(timeVec, pulses, plot=True)
+    # plt.show()
 
 
 if __name__ == '__main__':

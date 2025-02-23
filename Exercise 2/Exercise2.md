@@ -183,11 +183,48 @@ way, at 1, 3, 5, 7, 9, 11 and 13 cm distance, there are scatterers that will
 produce reflections/echoes as the wave travels through. To create the reflected
 signal we receive, we define a depth axis containing the scatterer impulses
 (pulse echo response means squared Green's function. Impulses are scaled with
-depth) and use that as a propagation filter.
+depth) and use that as a propagation filter on the transmitted signal from
+before.
 
 ```python
-...
+timeVec = np.arange(-5 / f0, 2 * 15e-2 / 1540, 1 / fs)
+scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
+scatterIndices = [
+    np.argmin(np.abs(timeVec - 2 * r / 1540))
+    for r in scattererPositionsCm * 1e-2
+]
+
+gamma = 1e-2    # Picked at random
+reflections = np.zeros_like(timeVec)
+reflections[scatterIndices] = gamma / (4 * np.pi * scattererPositionsCm *
+                                        1e-2)
+
+gauss = pulses[0][700:1800]     # Slice to avoid spending forever on zeros
+square = pulses[1][700:1800]
+
+receivedGauss = np.convolve(gauss, reflections, "same")
+receivedSquare = np.convolve(square, reflections, "same")
 ```
 
->> ![task2_depth](figures/task2_depth.png)
->> Depth axis.
+Using this code we can plot the received signal as a function of depth:
+
+>> ![task2_depth_raw](figures/task2_depth_raw.png)
+>> Received signal over time converted to depth axis.
+
+Here we see the impulses coming from the transmitted signal being reflected by
+the reflectors. We can also define a function to generate noise with a target SNR based on what
+we learned in the previous exercise:
+
+```python
+def getNoiseTargetSNR(signal, targetSNRdB):
+    noise = np.random.randn(len(signal))
+    power = 1 / np.linalg.norm(noise) * np.linalg.norm(signal)
+    return noise * power / (10**(targetSNRdB / 20))
+
+SNR = 20
+noisyGauss = receivedGauss + getNoiseTargetSNR(receivedGauss, SNR)
+noisySquare = receivedSquare + getNoiseTargetSNR(receivedSquare, SNR)
+```
+
+>> ![task2_depth_noisy](figures/task2_depth_noisy.png)
+>> Signal depth axis with added noise.
