@@ -289,3 +289,33 @@ like this:
 In the compensated plots, notice how each of the reflector impulses have the
 same amplitude. This has the side effect of also amplifying the noise more and
 more, meaning our SNR goes down over time (aka. with increased depth).
+
+### IQ-Demodulation
+
+Now we can create a baseband representation of the signal. First we apply a
+windowing function to avoid high-frequency components, then we use the
+Hilbert-function to get the analytical signal (which has a one sided spectrum).
+This analytical signal can then be demodulated using a complex exponential at
+the center frequency of the pulse (`f0=2.5MHZ`).
+
+```python
+window = signal.windows.tukey(len(timeVec), alpha=0.01)
+
+windowedAnalyticalGauss = signal.hilbert(compensatedGauss * window)
+windowedAnalyticalSquare = signal.hilbert(compensatedSquare * window)
+
+demodulatedGauss = windowedAnalyticalGauss * np.exp(
+    -1j * 2 * np.pi * f0 * timeVec)
+demodulatedSquare = windowedAnalyticalSquare * np.exp(
+    -1j * 2 * np.pi * f0 * timeVec)
+```
+
+We can look at the power spectra of these different stages of processing:
+
+>> ![task2_iq](figures/task2_iq.png)
+>> Power spectra of Gauss- and square-pulses, their analytical functions, and
+>> the demodulated result signals.
+
+### Envelope Detection and A-mode
+
+COMING SOON

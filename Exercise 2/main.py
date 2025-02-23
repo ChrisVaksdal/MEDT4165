@@ -398,6 +398,71 @@ def task2_filter(timeVec, pulses, plot):
     return filteredGauss, filteredSquare
 
 
+def task2_iq(timeVec, compensatedGauss, compensatedSquare, plot):
+    window = signal.windows.tukey(len(timeVec), alpha=0.01)
+
+    windowedAnalyticalGauss = signal.hilbert(compensatedGauss * window)
+    windowedAnalyticalSquare = signal.hilbert(compensatedSquare * window)
+
+    demodulatedGauss = windowedAnalyticalGauss * np.exp(
+        -1j * 2 * np.pi * f0 * timeVec)
+    demodulatedSquare = windowedAnalyticalSquare * np.exp(
+        -1j * 2 * np.pi * f0 * timeVec)
+
+    hilbertSpectrumGauss, freqs = powerSpectrum(windowedAnalyticalGauss, fs)
+    hilbertSpectrumSquare, _ = powerSpectrum(windowedAnalyticalSquare, fs)
+    demodulatedSpectrumGauss, _ = powerSpectrum(demodulatedGauss, fs)
+    demodulatedSpectrumSquare, _ = powerSpectrum(demodulatedSquare, fs)
+
+    gaussSpectrum, _ = powerSpectrum(compensatedGauss, fs)
+    squareSpectrum, _ = powerSpectrum(compensatedSquare, fs)
+
+    if plot:
+        iqFigure = Figure(2, 1, "IQ demodulation", "task2_iq.png", (60, 60))
+        iqFigure.addPlot(0,
+                         0,
+                         freqs * 1e-6,
+                         gaussSpectrum,
+                         xLabel="Frequency (MHz)",
+                         yLabel="Power (dB)",
+                         xLim=(-10, 10),
+                         yLim=(-75, 5),
+                         grid=True,
+                         dotted=True)
+        iqFigure.addPlot(0, 0, freqs * 1e-6, hilbertSpectrumGauss)
+        iqFigure.addPlot(0,
+                         0,
+                         freqs * 1e-6,
+                         demodulatedSpectrumGauss,
+                         emphasized=True)
+        iqFigure.addLegend(
+            0, 0,
+            ["Gauss spectrum", "Hilbert Spectrum", "Demodulated spectrum"])
+
+        iqFigure.addPlot(1,
+                         0,
+                         freqs * 1e-6,
+                         squareSpectrum,
+                         xLabel="Frequency (MHz)",
+                         yLabel="Power (dB)",
+                         xLim=(-10, 10),
+                         yLim=(-75, 5),
+                         grid=True,
+                         dotted=True)
+        iqFigure.addPlot(1, 0, freqs * 1e-6, hilbertSpectrumSquare)
+        iqFigure.addPlot(1,
+                         0,
+                         freqs * 1e-6,
+                         demodulatedSpectrumSquare,
+                         emphasized=True)
+        iqFigure.addLegend(
+            1, 0,
+            ["Square spectrum", "Hilbert Spectrum", "Demodulated spectrum"])
+        iqFigure.savePlot()
+
+    return demodulatedGauss, demodulatedSquare
+
+
 def task2_tgc(timeVec, filteredGauss, filteredSquare, plot):
     rAxis = timeVec * 1540 / 2
     depthGain = 20 * (4 * np.pi * rAxis)**2
@@ -431,12 +496,18 @@ def task2_tgc(timeVec, filteredGauss, filteredSquare, plot):
         tgcFigure.addLegend(1, 0, ["Not compensated", "Compensated"])
         tgcFigure.savePlot()
 
+    return tgcGauss, tgcSquare
+
 
 def task2(pulseTimeVec, pulses, plot=False):
     timeVec, receivedGauss, receivedSquare = task2_receive(pulses, plot=plot)
     filteredGauss, filteredSquare = task2_filter(
         timeVec, [receivedGauss, receivedSquare], plot=plot)
-    task2_tgc(timeVec, filteredGauss, filteredSquare, plot=plot)
+    compensatedGauss, compensatedSquare = task2_tgc(timeVec,
+                                                    filteredGauss,
+                                                    filteredSquare,
+                                                    plot=plot)
+    task2_iq(timeVec, compensatedGauss, compensatedSquare, plot=plot)
 
 
 def main():
