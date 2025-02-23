@@ -318,4 +318,48 @@ We can look at the power spectra of these different stages of processing:
 
 ### Envelope Detection and A-mode
 
-COMING SOON
+Now we can finally calculate the envelope of our processed signal and use that
+to create an ultrasound image strip:
+
+```python
+gaussEnvelope = np.abs(demodulatedGauss)**2
+gaussEnvelope = 10 * np.log10(gaussEnvelope + np.finfo(float).eps)
+gaussEnvelope -= np.max(gaussEnvelope)  # Normalize
+
+squareEnvelope = np.abs(demodulatedSquare)**2
+squareEnvelope = 10 * np.log10(squareEnvelope + np.finfo(float).eps)
+squareEnvelope -= np.max(squareEnvelope)
+
+def getAModeImageStrip(timeVec, signal):
+    nStrips = 1
+    gaussTile = np.tile(signal, (nStrips, 1))
+    fig = plt.figure(figsize=(15, 1))
+    plt.imshow(gaussTile,
+               aspect="auto",
+               cmap="gray",
+               extent=[
+                   100 * timeVec[0] * 1540 / 2,
+                   100 * timeVec[-1] * 1540 / 2,
+                   0, nStrips
+               ],
+               vmin=-40,
+               vmax=5)
+    plt.xlabel("Depth (cm)", fontsize=24)
+    plt.title("Ultrasound A-mode image strip", fontsize=36)
+    return fig
+
+gaussStrip = getAModeImageStrip(timeVec, gaussEnvelope)
+squareStrip = getAModeImageStrip(timeVec, squareEnvelope)
+
+```
+
+The above code gives us the following output signals and image strips:
+
+>> ![task2_a_mode](figures/task2_a_mode.png)
+>> Signal envelopes derived from processed signals.
+-----
+>> ![task2_a_mode_gauss](figures/task2_a_mode_gauss.png)
+>> Image strip derived from gauss signal.
+-----
+>> ![task2_a_mode_square](figures/task2_a_mode_square.png)
+>> Image strip derived from square signal.

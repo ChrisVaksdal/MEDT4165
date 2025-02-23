@@ -398,6 +398,42 @@ def task2_filter(timeVec, pulses, plot):
     return filteredGauss, filteredSquare
 
 
+def task2_tgc(timeVec, filteredGauss, filteredSquare, plot):
+    rAxis = timeVec * 1540 / 2
+    depthGain = 20 * (4 * np.pi * rAxis)**2
+    tgcGauss = filteredGauss * depthGain
+    tgcSquare = filteredSquare * depthGain
+
+    if plot:
+        tgcFigure = Figure(2, 1, "TGC", "task2_tgc.png", (60, 60))
+        tgcFigure.addPlot(0,
+                          0,
+                          timeVec * 1e2 * 1540,
+                          filteredGauss,
+                          title="Gauss",
+                          xLabel="Depth (cm)",
+                          yLabel="Amplitude",
+                          grid=True,
+                          dotted=True)
+        tgcFigure.addPlot(0, 0, timeVec * 1e2 * 1540, tgcGauss)
+        tgcFigure.addLegend(0, 0, ["Not compensated", "Compensated"])
+
+        tgcFigure.addPlot(1,
+                          0,
+                          timeVec * 1e2 * 1540,
+                          filteredSquare,
+                          title="Square",
+                          xLabel="Depth (cm)",
+                          yLabel="Amplitude",
+                          grid=True,
+                          dotted=True)
+        tgcFigure.addPlot(1, 0, timeVec * 1e2 * 1540, tgcSquare)
+        tgcFigure.addLegend(1, 0, ["Not compensated", "Compensated"])
+        tgcFigure.savePlot()
+
+    return tgcGauss, tgcSquare
+
+
 def task2_iq(timeVec, compensatedGauss, compensatedSquare, plot):
     window = signal.windows.tukey(len(timeVec), alpha=0.01)
 
@@ -463,40 +499,59 @@ def task2_iq(timeVec, compensatedGauss, compensatedSquare, plot):
     return demodulatedGauss, demodulatedSquare
 
 
-def task2_tgc(timeVec, filteredGauss, filteredSquare, plot):
-    rAxis = timeVec * 1540 / 2
-    depthGain = 20 * (4 * np.pi * rAxis)**2
-    tgcGauss = filteredGauss * depthGain
-    tgcSquare = filteredSquare * depthGain
+def getAModeImageStrip(timeVec, signal, name):
+    nStrips = 1
+    gaussTile = np.tile(signal, (nStrips, 1))
+    fig = plt.figure(figsize=(15, 5))
+    plt.imshow(gaussTile,
+               aspect="auto",
+               cmap="gray",
+               extent=[
+                   100 * timeVec[0] * 1540 / 2, 100 * timeVec[-1] * 1540 / 2, 0,
+                   nStrips
+               ],
+               vmin=-40,
+               vmax=5)
+    plt.xlabel("Depth (cm)", fontsize=12)
+    plt.title(f"Ultrasound A-mode image strip ({name} pulse)", fontsize=24)
+    return fig
+
+
+def task2_a_mode(timeVec, demodulatedGauss, demodulatedSquare, plot):
+    gaussEnvelope = np.abs(demodulatedGauss)**2
+    gaussEnvelope = 10 * np.log10(gaussEnvelope + np.finfo(float).eps)
+    gaussEnvelope -= np.max(gaussEnvelope)  # Normalize
+
+    squareEnvelope = np.abs(demodulatedSquare)**2
+    squareEnvelope = 10 * np.log10(squareEnvelope + np.finfo(float).eps)
+    squareEnvelope -= np.max(squareEnvelope)
 
     if plot:
-        tgcFigure = Figure(2, 1, "TGC", "task2_tgc.png", (60, 60))
-        tgcFigure.addPlot(0,
-                          0,
-                          timeVec * 1e2 * 1540,
-                          filteredGauss,
-                          title="Gauss",
-                          xLabel="Depth (cm)",
-                          yLabel="Amplitude",
-                          grid=True,
-                          dotted=True)
-        tgcFigure.addPlot(0, 0, timeVec * 1e2 * 1540, tgcGauss)
-        tgcFigure.addLegend(0, 0, ["Not compensated", "Compensated"])
+        aModeFigure = Figure(2, 1, "Ultrasound A-mode", "task2_a_mode.png",
+                             (60, 60))
+        aModeFigure.addPlot(0,
+                            0,
+                            timeVec * 1e2 * 1540,
+                            gaussEnvelope,
+                            title="Gauss",
+                            xLabel="Depth (cm)",
+                            yLabel="Amplitude",
+                            grid=True)
+        aModeFigure.addPlot(1,
+                            0,
+                            timeVec * 1e2 * 1540,
+                            squareEnvelope,
+                            title="Square",
+                            xLabel="Depth (cm)",
+                            yLabel="Amplitude",
+                            grid=True)
+        aModeFigure.savePlot()
 
-        tgcFigure.addPlot(1,
-                          0,
-                          timeVec * 1e2 * 1540,
-                          filteredSquare,
-                          title="Square",
-                          xLabel="Depth (cm)",
-                          yLabel="Amplitude",
-                          grid=True,
-                          dotted=True)
-        tgcFigure.addPlot(1, 0, timeVec * 1e2 * 1540, tgcSquare)
-        tgcFigure.addLegend(1, 0, ["Not compensated", "Compensated"])
-        tgcFigure.savePlot()
+        gaussStrip = getAModeImageStrip(timeVec, gaussEnvelope, "Gauss")
+        gaussStrip.savefig("output/2/figures/task2_a_mode_gauss.png")
 
-    return tgcGauss, tgcSquare
+        squareStrip = getAModeImageStrip(timeVec, squareEnvelope, "Square")
+        squareStrip.savefig("output/2/figures/task2_a_mode_square.png")
 
 
 def task2(pulseTimeVec, pulses, plot=False):
@@ -507,7 +562,11 @@ def task2(pulseTimeVec, pulses, plot=False):
                                                     filteredGauss,
                                                     filteredSquare,
                                                     plot=plot)
-    task2_iq(timeVec, compensatedGauss, compensatedSquare, plot=plot)
+    demodulatedGauss, demodulatedSquare = task2_iq(timeVec,
+                                                   compensatedGauss,
+                                                   compensatedSquare,
+                                                   plot=plot)
+    task2_a_mode(timeVec, demodulatedGauss, demodulatedSquare, plot=plot)
 
 
 def main():
