@@ -7,9 +7,9 @@ from .Figure import Figure
 
 def powerSpectrum(signal, fs):
     N = len(signal)
-    spectrum = (1 / N) * np.abs(np.fft.fft(signal, N))**2
-    # spectrum = 10 * np.log10(spectrum)
-    spectrum = np.fft.fftshift(spectrum)
+    spectrum = np.fft.fftshift(np.fft.fft(signal, N))
+    spectrum = (1 / N) * np.abs(spectrum)**2
+    spectrum = 10 * np.log10(spectrum + np.finfo(float).eps)
     freqs = np.fft.fftfreq(N, d=1 / fs)
     freqs = np.fft.fftshift(freqs)
     return spectrum, freqs
@@ -64,19 +64,15 @@ def task1_transmission(timeVec, f0, plot=False):
     squareSpectrum, squareFreqs = powerSpectrum(paddedSquarePulse, fs)
 
     # Pulse length estimation
-    signalEnv = abs(signal.hilbert(envGaussPulse))
+    signalEnv = abs(signal.hilbert(gausspulse))
     threshold = max(signalEnv) / 2
 
-    startIdx = np.where(signalEnv > threshold)[0][0]
-    endIdx = np.where(signalEnv > threshold)[0][-1]
+    aboveHalfMax = np.where(signalEnv > threshold)[0]
+    startIdx = aboveHalfMax[0]
+    endIdx = aboveHalfMax[-1]
+    pulseLength = (timeVec[endIdx] - timeVec[startIdx]) / 2
+    pulseLengthMillimeters = pulseLength * 1540 * 1e3
 
-    pulseLengthN = endIdx - startIdx
-    pulseLength = pulseLengthN / fs
-
-    speedOfSoundMetersPerSecond = 1540
-    pulseLengthMillimeters = pulseLength * speedOfSoundMetersPerSecond * 1e3
-
-    print(f"Pulse length: {pulseLengthN} samples")
     print(f"Pulse length: {pulseLengthMillimeters:.2f} mm")
 
     if plot:
@@ -94,8 +90,8 @@ def task1_transmission(timeVec, f0, plot=False):
         gaussFig.addLegend(0, 0, ["Real part", "Imaginary Part", "Envelope"])
         gaussFig.savePlot()
 
-        pulsesFig = Figure(1, 2, "Pulses and Spectra", "task1_pulses.png",
-                           (60, 30))
+        pulsesFig = Figure(2, 1, "Pulses and Spectra", "task1_pulses.png",
+                           (60, 40))
         pulsesFig.addPlot(0,
                           0,
                           timeVec * 1e6,
@@ -106,17 +102,39 @@ def task1_transmission(timeVec, f0, plot=False):
                           grid=True)
         pulsesFig.addPlot(0, 0, timeVec * 1e6, paddedSquarePulse)
         pulsesFig.addLegend(0, 0, ["Gauss Pulse", "Square Pulse"])
-        pulsesFig.addPlot(0,
-                          1,
+        pulsesFig.addPlot(1,
+                          0,
                           gaussFreqs * 1e-6,
                           gaussSpectrum,
                           xLabel="Frequency [MHz]",
                           yLabel="Power [dB]",
                           xLim=(-15, 15),
+                          yLim=(-30, 15),
                           grid=True)
-        pulsesFig.addPlot(0, 1, squareFreqs * 1e-6, squareSpectrum)
-        pulsesFig.addLegend(0, 1, ["Gauss Pulse", "Square Pulse"])
+        pulsesFig.addPlot(1, 0, squareFreqs * 1e-6, squareSpectrum)
+        pulsesFig.addLegend(1, 0, ["Gauss Pulse", "Square Pulse"])
         pulsesFig.savePlot()
+
+        pulseLengthFig = Figure(1, 1, "Pulse Length Estimation",
+                                "task1_pulse_length.png")
+        pulseLengthFig.addPlot(0,
+                               0,
+                               timeVec * 1e6,
+                               gausspulse,
+                               xLabel="Time [us]",
+                               yLabel="Amplitude [A]",
+                               xLim=(-2, 2),
+                               grid=True,
+                               dotted=True)
+        pulseLengthFig.addPlot(0, 0, timeVec * 1e6, signalEnv)
+        pulseLengthFig.addPlot(0,
+                               0,
+                               timeVec[aboveHalfMax] * 1e6,
+                               signalEnv[aboveHalfMax],
+                               emphasized=True)
+        pulseLengthFig.addLegend(
+            0, 0, ["Gauss Pulse", "Signal Envelope", "Values above half max"])
+        pulseLengthFig.savePlot()
 
     return gausspulse, paddedSquarePulse, gaussFreqs, gaussSpectrum, squareSpectrum
 
@@ -131,6 +149,7 @@ def task1_transducer(timeVec,
     bw = 0.4
 
     impulseResponse = signal.gausspulse(timeVec, fc=fc, bw=bw)
+    impulseResponse = impulseResponse / max(impulseResponse)
     freqResponse, transducerFreqs = powerSpectrum(impulseResponse, fs)
 
     if plot:
@@ -145,14 +164,10 @@ def task1_transducer(timeVec,
                               xLabel="Time [us]",
                               yLabel="Amplitude [A]",
                               xLim=[-T * 1e6 / 4, T * 1e6 / 4],
-                              grid=True)
+                              grid=True,
+                              emphasized=True)
         for sig in signals:
-            transducerFig.addPlot(
-                0,
-                0,
-                timeVec * 1e6,
-                sig,
-            )
+            transducerFig.addPlot(0, 0, timeVec * 1e6, sig, dotted=True)
         transducerFig.addLegend(0, 0, ["Transducer"] + names)
 
         transducerFig.addPlot(1,
@@ -163,18 +178,42 @@ def task1_transducer(timeVec,
                               xLabel="Frequency [MHz]",
                               yLabel="Power [dB]",
                               xLim=[-(fc * 6 * 1e-6), (fc * 6 * 1e-6)],
-                              grid=True)
+                              grid=True,
+                              emphasized=True)
         for spectrum in spectra:
-            transducerFig.addPlot(
-                1,
-                0,
-                freqs * 1e-6,
-                spectrum,
-            )
+            transducerFig.addPlot(1, 0, freqs * 1e-6, spectrum, dotted=True)
         transducerFig.addLegend(1, 0, ["Transducer"] + names)
         transducerFig.savePlot()
 
     return impulseResponse, freqResponse
+
+
+def plotSignalsAndSpectra(title, timeVec, signals, freqs, spectra, names):
+    filename = f"task1_{title.lower().replace(' ', '_')}.png"
+    signalsFig = Figure(2, 1, title, filename, (30, 30))
+    signalsFig.addPlot(0,
+                       0,
+                       timeVec * 1e6,
+                       signals[0],
+                       xLabel="Time [us]",
+                       yLabel="Amplitude [A]",
+                       xLim=(-2.5, 2.5),
+                       grid=True,
+                       dotted=True)
+    signalsFig.addPlot(0, 0, timeVec * 1e6, signals[1], emphasized=True)
+    signalsFig.addLegend(0, 0, names)
+    signalsFig.addPlot(1,
+                       0,
+                       freqs * 1e-6,
+                       spectra[0],
+                       xLabel="Frequency [MHz]",
+                       yLabel="Power [dB]",
+                       xLim=[-(f0 * 6 * 1e-6), (f0 * 6 * 1e-6)],
+                       grid=True,
+                       dotted=True)
+    signalsFig.addPlot(1, 0, freqs * 1e-6, spectra[1], emphasized=True)
+    signalsFig.addLegend(1, 0, names)
+    signalsFig.savePlot()
 
 
 def task1_combined(timeVec,
@@ -190,119 +229,39 @@ def task1_combined(timeVec,
     combinedSignals = []
     combinedSpectra = []
 
-    for sig, spectrum in zip(signals, spectra):
+    fastGauss = generateGaussPulse(timeVec, 4 * 1e6, 0.4)
+    fastSquare = generateSquarePulse(timeVec, 4 * 1e6, 1 / 0.4)
+    signals = signals + [fastGauss, fastSquare]
+    spectra = spectra + [
+        powerSpectrum(fastGauss, fs)[0],
+        powerSpectrum(fastSquare, fs)[0]
+    ]
+
+    for sig in signals:
         convolvedSignal = np.convolve(sig, transducerImpulseResponse, "same")
         convolvedSignal /= np.max(convolvedSignal)
         combinedSignals.append(convolvedSignal)
 
-        # spectrum, _ = powerSpectrum(convolvedSignal, fs)
-        convolvedSpectrum = transducerFrequencyResponse * spectrum
-        combinedSpectra.append(convolvedSpectrum / np.max(convolvedSpectrum))
-
-    fastGauss = generateGaussPulse(timeVec, 4 * 1e6, 0.4)
-    fastSquare = generateSquarePulse(timeVec, 4 * 1e6, 1 / 0.4)
-    fgSpectrum, _ = powerSpectrum(fastGauss, fs)
-    fsSpectrum, _ = powerSpectrum(fastSquare, fs)
-    fastConvolvedGauss = np.convolve(fastGauss, transducerImpulseResponse,
-                                     "same")
-    fastConvolvedGauss /= np.max(fastConvolvedGauss)
-    fastConvolvedSquare = np.convolve(fastSquare, transducerImpulseResponse,
-                                      "same")
-    fastConvolvedSquare /= np.max(fastConvolvedSquare)
-
-    fcgSpectrum = transducerFrequencyResponse * fgSpectrum
-    fcsSpectrum = transducerFrequencyResponse * fsSpectrum
+        convolvedSpectrum, _ = powerSpectrum(convolvedSignal, fs)
+        combinedSpectra.append(convolvedSpectrum)
 
     if plot:
-        convolvedSignalFig = Figure(len(signals), 2, "Convolved Signals",
-                                    "task1_convolved.png", (60, 60))
-        for i, rSig, cSig, name in zip(range(len(signals)), signals,
-                                       combinedSignals, names):
-            convolvedSignalFig.addPlot(
-                i,
-                0,
-                timeVec * 1e6,
-                rSig,
-                title=f"Convolving {name} with transducer",
-                xLabel="Time [us]",
-                yLabel="Amplitude [A]",
-                xLim=(-2.5, 2.5),
-                # xticks=np.linspace(timeVec[0] * 1e6, timeVec[-1] * 1e6, 11),
-                grid=True)
-            convolvedSignalFig.addPlot(i, 0, timeVec * 1e6, cSig)
-            convolvedSignalFig.addLegend(
-                i, 0, [f"Raw {name}", f"{name} convolved with transducer"])
-        minFreq, maxFreq = -f0 * 6 * 1e-6, f0 * 6 * 1e-6
-        for i, rSpectrum, cSpectrum, name in zip(range(len(combinedSpectra)),
-                                                 spectra, combinedSpectra,
-                                                 names):
-            convolvedSignalFig.addPlot(
-                i,
-                1,
-                freqs * 1e-6,
-                rSpectrum / np.max(rSpectrum),
-                title=f"Spectrum of {name} convolved with transducer",
-                xLabel="Frequency [MHz]",
-                yLabel="Power [dB]",
-                xLim=[minFreq, maxFreq],
-                xticks=np.arange(minFreq, maxFreq, 2),
-                grid=True)
-            convolvedSignalFig.addPlot(i, 1, freqs * 1e-6, cSpectrum)
-            convolvedSignalFig.addLegend(
-                i, 1, [f"Raw {name}", f"{name} convolved with transducer"])
-
-        convolvedSignalFig.savePlot()
-
-        fastFigure = Figure(1, 1, "Transmitting signals with f0=4MHz",
-                            "task1_fast_signal.png", (30, 30))
-        fastFigure.addSinglePlot(timeVec * 1e6,
-                                 fastGauss,
-                                 xLabel="Time [us]",
-                                 yLabel="Amplitude [A]",
-                                 xLim=(-2, 2),
-                                 grid=True)
-        fastFigure.addSinglePlot(timeVec * 1e6, fastSquare)
-        fastFigure.addSinglePlot(timeVec * 1e6, fastConvolvedGauss)
-        fastFigure.addSinglePlot(timeVec * 1e6, fastConvolvedSquare)
-        fastFigure.addLegend(
-            0, 0, ["Gauss", "Square", "Gauss Convolved", "Square Convolved"])
-        fastFigure.savePlot()
-
-        fSpectrumFig = Figure(1, 1,
-                              "Spectra of transmitting signals with f0=4MHz",
-                              "task1_fast_spectrum.png", (30, 30))
-        fSpectrumFig.addSinglePlot(freqs * 1e-6,
-                                   fgSpectrum / np.max(fgSpectrum),
-                                   xLabel="Frequency [MHz]",
-                                   yLabel="Power [dB]",
-                                   xLim=[minFreq, maxFreq],
-                                   xticks=np.arange(minFreq, maxFreq, 2),
-                                   grid=True)
-        fSpectrumFig.addSinglePlot(freqs * 1e-6,
-                                   fsSpectrum / np.max(fsSpectrum))
-        fSpectrumFig.addSinglePlot(freqs * 1e-6,
-                                   fcgSpectrum / np.max(fcgSpectrum))
-        fSpectrumFig.addSinglePlot(freqs * 1e-6,
-                                   fcsSpectrum / np.max(fcsSpectrum))
-        fSpectrumFig.addLegend(
-            0, 0, ["Gauss", "Square", "Gauss Convolved", "Square Convolved"])
-        fSpectrumFig.savePlot()
+        plotSigs = list(zip(signals, combinedSignals))
+        plotSpectra = list(zip(spectra, combinedSpectra))
+        plotSignalsAndSpectra("Gauss Signals", timeVec, plotSigs[0], freqs,
+                              plotSpectra[0], ["Gauss", "Convolved Gauss"])
+        plotSignalsAndSpectra("Square Signals", timeVec, plotSigs[1], freqs,
+                              plotSpectra[1], ["Square", "Convolved Square"])
+        plotSignalsAndSpectra(
+            "High Frequency Gauss Signals", timeVec, plotSigs[2], freqs,
+            plotSpectra[2],
+            ["High Frequency Gauss", "Convolved High Frequency Gauss"])
+        plotSignalsAndSpectra(
+            "High Frequency Square Signals", timeVec, plotSigs[3], freqs,
+            plotSpectra[3],
+            ["High Frequency Square", "Convolved High Frequency Square"])
 
     return combinedSignals, combinedSpectra
-
-
-# def task1_different_frequency(timeVec,
-#                               freqs,
-#                               originalSignals,
-#                               originalSpectra,
-#                               fasterSignals,
-#                               fasterSpectra,
-#                               plot=False):
-#     ...
-#     if plot:
-#         fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(60, 40))
-#         for sig, fSig in zip(originalSignals, fasterSignals):
-#             ...
 
 
 def task1(plot=False):
@@ -326,84 +285,109 @@ def task1(plot=False):
         ["Gauss Pulse", "Square Pulse"],
         plot=plot)
 
-    # fastGPulse, fastSPulse, _, _, _ = task1_transmission(timeVec, 4 * 1e6)
-    # fastConvolvedSignals, fastConvolvedSpectra = task1_combined(
-    #     timeVec,
-    #     f0,
-    #     transducerImpulse,
-    #     fftFreqs,
-    #     transducerFrequency, [fastGPulse, fastSPulse], [fastGPulse, fastSPulse],
-    #     ["Higher freq Gauss Pulse", "Higher freq Square Pulse"],
-    #     plot=False)
-
-    # task1_different_frequency(timeVec, fftFreqs, convolvedSignals,
-    #                           convolvedSpectra, fastConvolvedSignals,
-    #                           fastConvolvedSpectra)
-
-    # plt.show()
-
     return timeVec, convolvedSignals
 
 
-# def pulseEchoResponse(r, t):
-#     # G(r, t) = (dd(t - r/c)) / (4 * pi * r))
-#     # c = 1540m/s
-#     # numerator represents an impulse at time t=r/c, when scatterer is met
-#     # denominator represents amplitude dimishing with distance
-#     # dd is the dirac delta function
-#     # To model two-way response: square signal
-#     c = 1540
-#     # numerator = np.
-#     # denominator = 4 * np.pi * r
-#     # return (numerator / denominator)**2
+def task2_receive(pulses, plot=False):
+    scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
+    timeVec = np.arange(-5 / f0, 2 * 15e-2 / 1540, 1 / fs)
+    scatterIndices = [
+        np.argmin(np.abs(timeVec - 2 * r / 1540))
+        for r in scattererPositionsCm * 1e-2
+    ]
 
-# # def distanceToNearestScatterer(scattererPositions, t):
-# #     pos = (t + T / 2) * 1540
-# #     nearest = scattererPositions[np.abs(scattererPositions - pos).argmin()]
-# #     print(f"t: {t}, pos: {pos}, nearest: {nearest}")
-# #     return nearest
+    gamma = 1e-2
+    reflections = np.zeros_like(timeVec)
+    reflections[scatterIndices] = gamma / (4 * np.pi * scattererPositionsCm *
+                                           1e-2)
 
-# def distanceToNearestScatterer(scattererPositions, r):
-#     nearest = scattererPositions[np.abs(scattererPositions - r).argmin()]
-#     return nearest
+    gauss = pulses[0][700:1800]
+    square = pulses[1][700:1800]
 
-# def depthAxis(scattererPositions: np.ndarray):
-#     depth = np.linspace(0, 15 * 1e-2, 1000)
-#     sig = np.zeros(len(depth))
+    receivedGauss = np.convolve(gauss, reflections, "same")
+    receivedSquare = np.convolve(square, reflections, "same")
 
-#     for r in scattererPositions:
-#         sig += signal.unit_impulse(r, len(depth)) * pulseEchoResponse(r, r / 1540)
-#         # signal += np.array(
-#         #     [pulseEchoResponse(np.abs(d - r), d / 1540) for d in depth])
-#     sig /= np.max(signal)
+    SNR = 20
+    gaussNoise = np.random.randn(len(timeVec))
+    gaussNoise = gaussNoise / np.linalg.norm(gaussNoise) * np.linalg.norm(
+        receivedGauss) / 10**(SNR / 20)
+    squareNoise = np.random.randn(len(timeVec))
+    squareNoise = squareNoise / np.linalg.norm(squareNoise) * np.linalg.norm(
+        receivedSquare) / 10**(SNR / 20)
 
-#     # scatterSignal = np.array([
-#     #     pulseEchoResponse(distanceToNearestScatterer(scattererPositions, r),
-#     #                       r / 1540) for r in depth
-#     # ])
+    noisyGauss = receivedGauss + gaussNoise
+    noisySquare = receivedSquare + squareNoise
 
-#     return depth, sig
-#     # depth = np.array([pulseEchoResponse(distanceToNearestScatterer(scattererPositions, t), t) for t in timeVec])
-#     # for r, t in zip(scattererTimes, scattererPositions):
-#     #     closestTime = np.argmin(np.abs(timeVec - t))
-#     #     width = 10
-#     #     for tt in np.arange(closestTime - width, closestTime + width):
-#     #         depth[tt] = pulseEchoResponse(tt/1540, tt)
-#     # return depth
+    if plot:
+        depthFig = Figure(1, 1, "Received signals without noise",
+                          "task2_depth_raw.png", (60, 30))
+        depthFig.addPlot(0,
+                         0,
+                         timeVec * 1e2 * 1540,
+                         receivedGauss,
+                         xLabel="Depth (cm)",
+                         yLabel="Amplitude",
+                         grid=True)
+        depthFig.addPlot(0, 0, timeVec * 1e2 * 1540, receivedSquare)
+        depthFig.addLegend(0, 0, ["Gauss", "Square"])
 
-# def task2(timeVec, transmittedPulses, plot=False):
-#     scattererPositionsCm = np.array([1, 3, 5, 7, 9, 11, 13])
-#     depth, signal = depthAxis(scattererPositionsCm * 1e-2)
-#     depthFig = Figure(1, 1, "Depth Response", "task2_depth.png", (30, 30))
-#     depthFig.addPlot(0, 0, depth * 1e2, signal)
-#     plt.show()
+        depthFig = Figure(1, 1, "Received signals with",
+                          "task2_depth_noisy.png", (60, 30))
+        depthFig.addPlot(0,
+                         0,
+                         timeVec * 1e2 * 1540,
+                         noisyGauss,
+                         xLabel="Depth (cm)",
+                         yLabel="Amplitude",
+                         grid=True)
+        depthFig.addPlot(0, 0, timeVec * 1e2 * 1540, noisySquare)
+        depthFig.addLegend(0, 0, ["Gauss", "Square"])
+
+    return noisyGauss, noisySquare
+
+
+def task2_filter(pulses, plot=False):
+    fHigh = 3 * 1e6
+    fLow = 2 * 1e6
+    [b, a] = signal.butter(5, [fLow, fHigh], btype="bandpass", fs=fs)
+
+    gaussSpectrum, freqs = powerSpectrum(pulses[0], fs)
+    squareSpectrum, _ = powerSpectrum(pulses[1], fs)
+    spectra = [gaussSpectrum, squareSpectrum]
+
+    [w, p] = signal.freqz(b, a, len(freqs), whole=True, fs=fs)
+    p = 20 * np.log10(np.fft.fftshift(abs(p) + np.finfo(float).eps))
+
+    filterFigure = Figure(1, 1, "Bandpass filter", "task2_filter.png", (60, 30))
+    filterFigure.addPlot(0,
+                         0,
+                         w,
+                         p,
+                         xLabel="Frequency (Hz)",
+                         yLabel="Amplitude",
+                         grid=True)
+    for i, spectrum in enumerate(spectra):
+        filterFigure.addPlot(0,
+                             0,
+                             freqs * 1e-6,
+                             spectrum,
+                             xLabel="Frequency (Hz)",
+                             yLabel="Amplitude",
+                             xLim=[-10, 10],
+                             grid=True)
+
+
+def task2(pulseTimeVec, pulses, plot=False):
+    receivedGauss, receivedSquare = task2_receive(pulses, plot=plot)
+    task2_filter([receivedGauss, receivedSquare], plot=plot)
 
 
 def main():
     print("Exercise 2")
 
     timeVec, pulses = task1(plot=True)
-    # task2(timeVec, pulses, plot=True)
+    # plt.show()
+    task2(timeVec, pulses, plot=True)
 
 
 if __name__ == '__main__':

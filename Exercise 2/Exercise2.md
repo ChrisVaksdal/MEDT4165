@@ -64,7 +64,7 @@ paddedSquarePulse = zeroPad(squarePulse, len(gaussPulse))
 Here are the pulses and their respective spectra:
 
 >> ![task1_pulses](figures/task1_pulses.png)
->> Square Wave pulse with associated power spectrum. -->
+>> Gauss- and square pulse with associated power spectra.
 
 From the signal spectra we observe that the gaussian weighted sinusoidals only
 have peaks around the base frequency `f0 = 2.5MHz`. The square pulse on the
@@ -85,21 +85,23 @@ amplitude. This duration can be converted to a spatial length using the speed
 of sound `c = 1540m/s`.
 
 ```python
-signalEnv = abs(signal.hilbert(envGaussPulse))  # Calculate pulse envelope
-threshold = max(signalEnv) / 2  # To find 'start' and 'end' of pulse
+signalEnv = abs(signal.hilbert(gausspulse))
+threshold = max(signalEnv) / 2
 
-startIdx = np.where(signalEnv > threshold)[0][0]
-endIdx = np.where(signalEnv > threshold)[0][-1]
-
-pulseLengthN = endIdx - startIdx
-pulseLength = pulseLengthN / fs
-
-speedOfSoundMetersPerSecond = 1540
-pulseLengthMillimeters = pulseLength * speedOfSoundMetersPerSecond * 1e3
+aboveHalfMax = np.where(signalEnv > threshold)[0]
+startIdx = aboveHalfMax[0]
+endIdx = aboveHalfMax[-1]
+pulseLength = (timeVec[endIdx] - timeVec[startIdx]) / 2
+pulseLengthMillimeters = pulseLength * 1540 * 1e3
 ```
 
 Performing this calculation we get an output of a pulse duration of 511 samples,
-which comes out to a spatial pulse length of 3.15mm.
+which comes out to a spatial pulse length of 0.90mm. The signal envelope with
+the relevant section emphasized can be seen below:
+
+>> ![task1_pulse_length](figures/task1_pulse_length.png)
+>> Plot of gaussian pulse with area where envelope is above half of max
+>> emphasized.
 
 ### Transducer Response
 
@@ -128,16 +130,20 @@ for combining the signal with the transducer response:
 convolvedSignal = np.convolve(sig, impulseResponse, "same")
 convolvedSignal /= np.max(convolvedSignal)  # Normalize signal
 
-convolvedSpectrum = freqResponse * spectrum
+convolvedSpectrum = powerSpectrum(convolvedSignal, fs)
 ```
 
 We use `np.convolve()` to perform the convolution, specifying `"same"` makes
 the output signal be the same length (same number of samples) as the input (as
-opposed to twice as long). The following figure shows the transducer impulses
-along with our pulses:
+opposed to twice as long). In the following figures you can see the convolved
+signals and associated power spectra.
 
->> ![task1_convolved](figures/task1_convolved.png)
->> Gauss- and square-pulses along with transducer responses and convolved
+>> ![task1_gauss_signals](figures/task1_gauss_signals.png)
+>> Gauss pulse and powerspectrum along with transducer responses and convolved
+>> results.
+-----
+>> ![task1_square_signals](figures/task1_square_signals.png)
+>> Square pulse and powerspectrum along with transducer responses and convolved
 >> results.
 
 In the convolved plots, note that the gauss pulse is largely unchanged in terms
@@ -149,11 +155,11 @@ well, where you can see the harmonics have been eliminated.
 If we up the transmit frequency to 4MHz, but keep the transducer the same, we
 get signals and spectra like these:
 
->> ![task1_fast_signal](figures/task1_fast_signal.png)
->> Higher frequency Gauss- and square-pulses convolved with transducer.
+>> ![task1_high_frequency_gauss_signals](figures/task1_high_frequency_gauss_signals.png)
+>> Higher frequency Gauss pulse convolved with transducer.
 -----
->> ![task1_fast_spectrum](figures/task1_fast_spectrum.png)
->> Higher frequency Gauss- and square-pulses convolved with transducer.
+>> ![task1_high_frequency_square_signals](figures/task1_high_frequency_square_signals.png)
+>> Higher frequency square pulse convolved with transducer.
 
 We see that when convolving the higher frequency transmitted signal with the
 transducer can mess up the signal. The shape of the signal is altered and we
@@ -183,4 +189,5 @@ depth) and use that as a propagation filter.
 ...
 ```
 
-MORE ABOUT RECEIVED SIGNAL COMING SOON.
+>> ![task2_depth](figures/task2_depth.png)
+>> Depth axis.
