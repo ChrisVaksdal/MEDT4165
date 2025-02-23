@@ -4,3 +4,4 @@ scipy
 markdown
 Pygments
 pymupdf
+yapf

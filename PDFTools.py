@@ -3,6 +3,7 @@
 import io
 import fitz
 
+
 class PDFGenerator:
 
     borders = (36, 36, -36, -36)
@@ -18,12 +19,12 @@ class PDFGenerator:
         "keywords": None,
     }
 
-    def __init__(self, meta: dict|None = None):
+    def __init__(self, meta: dict | None = None):
         self.out_file = io.BytesIO()
         self.writer = fitz.DocumentWriter(self.out_file)
         self.page = 0
         self.meta = meta
-    
+
     def generatePdf(self, html: str, rootDir: str, css: str):
         story = fitz.Story(html=html, archive=rootDir, user_css=css)
         rect = fitz.paper_rect("A4")
@@ -37,7 +38,7 @@ class PDFGenerator:
             # story.element_positions(self._recorder, {"toc": True, "pdfile": self})
             story.draw(device)
             self.writer.end_page()
-    
+
     def save(self, outputPath: str):
         self.writer.close()
         doc = fitz.open("pdf", self.out_file)
