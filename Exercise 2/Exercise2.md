@@ -212,8 +212,8 @@ Using this code we can plot the received signal as a function of depth:
 >> Received signal over time converted to depth axis.
 
 Here we see the impulses coming from the transmitted signal being reflected by
-the reflectors. We can also define a function to generate noise with a target SNR based on what
-we learned in the previous exercise:
+the reflectors. We can also define a function to generate noise with a target
+SNR based on what we learned in the previous exercise:
 
 ```python
 def getNoiseTargetSNR(signal, targetSNRdB):
@@ -228,3 +228,24 @@ noisySquare = receivedSquare + getNoiseTargetSNR(receivedSquare, SNR)
 
 >> ![task2_depth_noisy](figures/task2_depth_noisy.png)
 >> Signal depth axis with added noise.
+
+### Filtering the received signal
+
+We can reuse what we learned in exercise 1 to create a bandpass filter to
+eliminate noise from our signal:
+
+```python
+fHigh = 3 * 1e6
+fLow = 2 * 1e6
+[b, a] = signal.butter(4, [fLow, fHigh], btype="bandpass", fs=fs)
+
+# Estimate frequency response
+[w, p] = signal.freqz(b, a, len(freqs), whole=True, fs=fs)
+p = 20 * np.log10(np.fft.fftshift(abs(p) + np.finfo(float).eps))
+```
+
+Plotting the frequency response of the filter along with the power spectra of
+our signal, we get this:
+
+>> ![task2_filter](task2_filter.png)
+>> Frequency response of bandpass-filter along with spectra of received signals.

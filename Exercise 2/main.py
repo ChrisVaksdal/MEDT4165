@@ -350,13 +350,13 @@ def task2_receive(pulses, plot=False):
 def task2_filter(pulses, plot=False):
     fHigh = 3 * 1e6
     fLow = 2 * 1e6
-    [b, a] = signal.butter(5, [fLow, fHigh], btype="bandpass", fs=fs)
+    [b, a] = signal.butter(4, [fLow, fHigh], btype="bandpass", fs=fs)
 
     gaussSpectrum, freqs = powerSpectrum(pulses[0], fs)
     squareSpectrum, _ = powerSpectrum(pulses[1], fs)
     spectra = [gaussSpectrum, squareSpectrum]
 
-    [w, p] = signal.freqz(b, a, len(freqs), whole=True, fs=fs)
+    [_, p] = signal.freqz(b, a, len(freqs), whole=True, fs=fs)
     p = 20 * np.log10(np.fft.fftshift(abs(p) + np.finfo(float).eps))
 
     if plot:
@@ -364,20 +364,18 @@ def task2_filter(pulses, plot=False):
                               (60, 30))
         filterFigure.addPlot(0,
                              0,
-                             w,
+                             freqs * 1e-6,
                              p,
                              xLabel="Frequency (Hz)",
                              yLabel="Amplitude",
+                             xLim=(-10, 10),
+                             yLim=(-70, 15),
                              grid=True)
-        for i, spectrum in enumerate(spectra):
-            filterFigure.addPlot(0,
-                                 0,
-                                 freqs * 1e-6,
-                                 spectrum,
-                                 xLabel="Frequency (Hz)",
-                                 yLabel="Amplitude",
-                                 xLim=[-10, 10],
-                                 grid=True)
+        for spectrum in spectra:
+            filterFigure.addPlot(0, 0, freqs * 1e-6, spectrum)
+        filterFigure.addLegend(
+            0, 0, ["Filter response", "Gauss spectrum", "Square spectrum"])
+        filterFigure.savePlot()
 
 
 def task2(pulseTimeVec, pulses, plot=False):
