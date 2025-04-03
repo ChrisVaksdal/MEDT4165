@@ -5,3 +5,4 @@ markdown
 Pygments
 pymupdf
 yapf
+k-wave-python
