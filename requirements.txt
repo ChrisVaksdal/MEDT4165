@@ -6,3 +6,4 @@ Pygments
 pymupdf
 yapf
 k-wave-python
+tqdm
